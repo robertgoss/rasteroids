@@ -5,11 +5,11 @@ Stages Of development before LAN party
   + ~~Repo~~
   + ~~Bevy~~
   + ~~Window~~
-+ Rendering
++ ~~Rendering~~
   + ~~Asteroids (Fixed)~~
   + ~~Bases (Fixed)~~
   + ~~System to update bases to edgeof asteroid~~
-  + Background
+  + ~~Background~~
 + Firing
   + Rocket
     + Start base

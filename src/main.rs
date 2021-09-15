@@ -19,6 +19,13 @@ fn setup(
     // cameras
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     commands.spawn_bundle(UiCameraBundle::default());
+    // Background sprite
+    let star_map_handle = asset_server.load("images/starfield.png");
+    commands.spawn_bundle(SpriteBundle {
+        material: materials.add(star_map_handle.into()),
+        transform: Transform::from_scale(Vec3::new(1.5, 1.5, 1.5)),
+        ..Default::default()
+    });
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
@@ -99,7 +106,8 @@ fn asteroid_changed(
 
 
 fn main() {
-    App::build().add_plugins(DefaultPlugins)
+    App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+                .add_plugins(DefaultPlugins)
                 .add_startup_system(setup.system())
                 .add_system(asteroid_changed.system())
                 .run();
