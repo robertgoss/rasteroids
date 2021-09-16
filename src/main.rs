@@ -16,8 +16,6 @@ struct Base {
     offset : f32
 }
 
-struct FiringBase;
-
 struct MovingWeapon;
 
 struct Rocket {
@@ -40,22 +38,28 @@ struct WeaponMaterials {
 }
 
 #[derive(PartialEq, Eq)]
-enum TurnState {
+enum TurnPhase {
     Aiming, 
     Firing
 }
-
-impl Default for TurnState {
+impl Default for TurnPhase {
     fn default() -> Self {
-        TurnState::Aiming
+        TurnPhase::Aiming
     }
+}
+
+#[derive(Default)]
+struct TurnState {
+    phase : TurnPhase,
+    active_base : Option<Entity>
 }
 
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    mut weapon_materials : ResMut<WeaponMaterials>
+    mut weapon_materials : ResMut<WeaponMaterials>,
+    mut turn_state : ResMut<TurnState>
 ) {
     // cameras
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
@@ -80,7 +84,7 @@ fn setup(
     add_base(&mut commands, 1.0, base_material.clone(), ast_1);
     add_base(&mut commands, 2.0, base_material.clone(), ast_2);
     add_base(&mut commands, 3.0, base_material.clone(), ast_3);
-    commands.entity(base_1).insert(FiringBase);
+    turn_state.active_base = Some(base_1);
     // Load weapon textures
     let rocket_texture_handle = asset_server.load("images/rocket.png");
     weapon_materials.rocket = materials.add(rocket_texture_handle.into());
@@ -206,18 +210,16 @@ fn rocket_fuel_update(
 
 fn firing_system(
     mouse_button_input: Res<Input<MouseButton>>,
-    base_query: Query<Entity, With<FiringBase>>, 
     mut events: EventWriter<RocketLaunch>,
-    mut turn_state : ResMut<TurnState>
+    turn_state : Res<TurnState>
 ) {
-    if mouse_button_input.just_pressed(MouseButton::Left) && *turn_state == TurnState::Aiming {
+    if mouse_button_input.just_pressed(MouseButton::Left) && turn_state.phase == TurnPhase::Aiming {
         // Test launch a rockets
-        for base in base_query.iter() {
+        if let Some(base) = turn_state.active_base {
             events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base});
         }
-        *turn_state = TurnState::Firing;
     }
 }
 
@@ -243,9 +245,9 @@ fn turn_update(
     weapon_query : Query<&MovingWeapon>
 ) {
     if weapon_query.iter().is_empty() {
-        *turn_state = TurnState::Aiming;
+        turn_state.phase = TurnPhase::Aiming;
     } else {
-        *turn_state = TurnState::Firing;
+        turn_state.phase = TurnPhase::Firing;
     }
 }
 
