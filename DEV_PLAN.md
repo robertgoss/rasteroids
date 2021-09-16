@@ -8,7 +8,7 @@ Stages Of development before LAN party
 + ~~Rendering~~
   + ~~Asteroids (Fixed)~~
   + ~~Bases (Fixed)~~
-  + ~~System to update bases to edgeof asteroid~~
+  + ~~System to update bases to edge of asteroid~~
   + ~~Background~~
 + Firing
   + Rocket
@@ -25,7 +25,7 @@ Stages Of development before LAN party
   + Two fixed players
     + Base ownership
     + Fixed Colours
-    + Only fire in firing phase
+    + ~Only fire in firing phase~
     + End turn
     + Switch turns
 + Damage

@@ -1,4 +1,8 @@
+#![feature(exact_size_is_empty)]
+
 use bevy::prelude::*;
+
+
 
 
 struct AsteroidDrawable;
@@ -13,6 +17,8 @@ struct Base {
 }
 
 struct FiringBase;
+
+struct Weapon;
 
 struct Rocket {
     thrust : Vec2,
@@ -31,6 +37,18 @@ struct RocketLaunch {
 #[derive(Default)]
 struct WeaponMaterials {
     rocket : Handle<ColorMaterial>
+}
+
+#[derive(PartialEq, Eq)]
+enum TurnState {
+    Aiming, 
+    Firing
+}
+
+impl Default for TurnState {
+    fn default() -> Self {
+        TurnState::Aiming
+    }
 }
 
 fn setup(
@@ -152,7 +170,9 @@ fn rocket_launching_system(
                 },
                 sprite: Sprite::new(Vec2::new(12.0, 36.0)),
                 ..Default::default()
-            }).insert(Rocket{ thrust : thrust, fuel : 6.0 });
+            }).insert(
+                Rocket{ thrust : thrust, fuel : 6.0 }
+            ).insert(Weapon);
         }
     }
 }
@@ -188,15 +208,16 @@ fn firing_system(
     mouse_button_input: Res<Input<MouseButton>>,
     base_query: Query<Entity, With<FiringBase>>, 
     mut events: EventWriter<RocketLaunch>,
-
+    mut turn_state : ResMut<TurnState>
 ) {
-    if mouse_button_input.just_pressed(MouseButton::Left) {
+    if mouse_button_input.just_pressed(MouseButton::Left) && *turn_state == TurnState::Aiming {
         // Test launch a rockets
         for base in base_query.iter() {
             events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base});
         }
+        *turn_state = TurnState::Firing;
     }
 }
 
@@ -217,11 +238,23 @@ fn gravity_system(
     }
 }
 
+fn turn_update(
+    mut turn_state : ResMut<TurnState>, 
+    weapon_query : Query<&Weapon>
+) {
+    if weapon_query.iter().is_empty() {
+        *turn_state = TurnState::Aiming;
+    } else {
+        *turn_state = TurnState::Firing;
+    }
+}
+
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
                 .add_event::<RocketLaunch>()
                 .init_resource::<WeaponMaterials>()
+                .init_resource::<TurnState>()
                 .add_startup_system(setup.system())
                 .add_system(asteroid_changed.system())
                 .add_system(rocket_launching_system.system())
@@ -229,5 +262,6 @@ fn main() {
                 .add_system(rocket_fuel_update.system())
                 .add_system(firing_system.system())
                 .add_system(gravity_system.system())
+                .add_system(turn_update.system())
                 .run();
 }
