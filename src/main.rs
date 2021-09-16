@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+
 struct AsteroidDrawable;
 struct Asteroid{
     max_radius : f32,
@@ -11,10 +12,32 @@ struct Base {
     offset : f32
 }
 
+struct FiringBase;
+
+struct Rocket {
+    thrust : Vec2
+}
+
+// Events
+struct RocketLaunch {
+    angle : f32,
+    offset : f32,
+    thrust : f32,
+    parent : Entity
+}
+
+// Resourses 
+#[derive(Default)]
+struct WeaponMaterials {
+    rocket : Handle<ColorMaterial>
+}
+
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    mut weapon_materials : ResMut<WeaponMaterials>,
+    mut events: EventWriter<RocketLaunch>,
 ) {
     // cameras
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
@@ -30,19 +53,24 @@ fn setup(
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
     let ast_1 = add_asteroid(&mut commands, 0.0, -215.0, asteroid_material.clone());
-    add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone());
-    add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone());
+    let ast_2 = add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone());
+    let ast_3 = add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone());
     // Bases
     let base_texture_handle = asset_server.load("images/base.png");
     let base_material = materials.add(base_texture_handle.into());
-    add_base(&mut commands, 0.0, base_material.clone(), ast_1);
+    let base1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1);
     add_base(&mut commands, 1.0, base_material.clone(), ast_1);
-    add_base(&mut commands, 2.0, base_material.clone(), ast_1);
-    // Set asteroid sizes
-    
+    add_base(&mut commands, 2.0, base_material.clone(), ast_2);
+    add_base(&mut commands, 3.0, base_material.clone(), ast_3);
+    commands.entity(base1).insert(FiringBase);
+    // Load weapon textures
+    let rocket_texture_handle = asset_server.load("images/rocket.png");
+    weapon_materials.rocket = materials.add(rocket_texture_handle.into());
+    // Test launch a rocket
+    events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base1});
 }
 
-fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity{
+fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
     let max_radius = 100.0;
     commands.spawn().insert(Asteroid{
         max_radius : 100.0,
@@ -61,7 +89,7 @@ fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<Colo
     ).id()
 }
 
-fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial>, asteroid : Entity) {
+fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial>, asteroid : Entity) -> Entity {
     commands.spawn_bundle(SpriteBundle {
         material: texture,
         transform: Transform::from_rotation(Quat::from_rotation_z(angle)),
@@ -70,7 +98,8 @@ fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial
     }).insert(Base{
         angle : angle,
         offset : -8.5
-    }).insert(Parent(asteroid));
+    }).insert(Parent(asteroid)
+    ).id()
 }
 
 // If an asteroid's radius changes we want to update it's sprite and reposition bases on the surface
@@ -104,11 +133,53 @@ fn asteroid_changed(
     }
 }
 
+fn rocket_launching_system(
+    mut events: EventReader<RocketLaunch>,
+    mut commands: Commands,
+    transform_query: Query<&GlobalTransform>,
+    materials : Res<WeaponMaterials>
+) {
+    for launch_event in events.iter() {
+        if let Ok(parent_transform) = transform_query.get(launch_event.parent) { 
+            let rocket_rotation = parent_transform.rotation * Quat::from_rotation_z(launch_event.angle);
+            let direction = rocket_rotation * Vec3::new(1.0, 0.0 ,0.0);
+            let offset = direction * launch_event.offset;
+            let thrust = Vec2::new(direction.x, direction.y) * launch_event.thrust;
+            commands.spawn_bundle(SpriteBundle {
+                material: materials.rocket.clone(),
+                transform: Transform { 
+                    translation : parent_transform.translation + offset,
+                    rotation : rocket_rotation,
+                    scale : Vec3::new(1.0,1.0,1.0)
+                },
+                sprite: Sprite::new(Vec2::new(12.0, 36.0)),
+                ..Default::default()
+            }).insert(Rocket{ thrust : thrust });
+        }
+    }
+}
+
+fn rocket_update(
+    mut rocket_query: Query<(&Rocket, &mut Transform)>, 
+    time: Res<Time>
+) {
+    for (rocket, mut transform) in rocket_query.iter_mut() {
+        let thrust = Vec3::new(rocket.thrust.x, rocket.thrust.y, 0.0);
+        if thrust.length() > 1.0 {
+            transform.rotation = Quat::from_rotation_arc(Vec3::new(1.0,0.0,0.0), -thrust);
+            transform.translation += thrust * time.delta_seconds();
+        }
+    }
+}
 
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
+                .add_event::<RocketLaunch>()
+                .init_resource::<WeaponMaterials>()
                 .add_startup_system(setup.system())
                 .add_system(asteroid_changed.system())
+                .add_system(rocket_launching_system.system())
+                .add_system(rocket_update.system())
                 .run();
 }
