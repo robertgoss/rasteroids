@@ -18,7 +18,7 @@ struct Base {
 
 struct FiringBase;
 
-struct Weapon;
+struct MovingWeapon;
 
 struct Rocket {
     thrust : Vec2,
@@ -172,7 +172,7 @@ fn rocket_launching_system(
                 ..Default::default()
             }).insert(
                 Rocket{ thrust : thrust, fuel : 6.0 }
-            ).insert(Weapon);
+            ).insert(MovingWeapon);
         }
     }
 }
@@ -240,7 +240,7 @@ fn gravity_system(
 
 fn turn_update(
     mut turn_state : ResMut<TurnState>, 
-    weapon_query : Query<&Weapon>
+    weapon_query : Query<&MovingWeapon>
 ) {
     if weapon_query.iter().is_empty() {
         *turn_state = TurnState::Aiming;
