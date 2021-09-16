@@ -13,22 +13,25 @@ Stages Of development before LAN party
 + Firing
   + Rocket
     + ~~Basic movement~~
-    + Start base
+    + ~~Start base~~
     + Gravity
-    + Lifetime
+    + ~~Lifetime~~
     + Collisions
   + UI 
-    + Mouse click
+    + ~~Mouse click~~
     + Direction
     + Magnitude
 + Turns
   + Two fixed players
     + Base ownership
     + Fixed Colours
+    + Only fire in firing phase
+    + End turn
     + Switch turns
 + Damage
   + Bases
     + Display health
+    + Display active
     + Add victory condition
   + Asteroids
     + Decrease size

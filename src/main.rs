@@ -15,7 +15,8 @@ struct Base {
 struct FiringBase;
 
 struct Rocket {
-    thrust : Vec2
+    thrust : Vec2,
+    fuel : f32
 }
 
 // Events
@@ -36,8 +37,7 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    mut weapon_materials : ResMut<WeaponMaterials>,
-    mut events: EventWriter<RocketLaunch>,
+    mut weapon_materials : ResMut<WeaponMaterials>
 ) {
     // cameras
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
@@ -58,18 +58,14 @@ fn setup(
     // Bases
     let base_texture_handle = asset_server.load("images/base.png");
     let base_material = materials.add(base_texture_handle.into());
-    let base1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1);
+    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1);
     add_base(&mut commands, 1.0, base_material.clone(), ast_1);
     add_base(&mut commands, 2.0, base_material.clone(), ast_2);
     add_base(&mut commands, 3.0, base_material.clone(), ast_3);
-    commands.entity(base1).insert(FiringBase);
+    commands.entity(base_1).insert(FiringBase);
     // Load weapon textures
     let rocket_texture_handle = asset_server.load("images/rocket.png");
     weapon_materials.rocket = materials.add(rocket_texture_handle.into());
-    // Test launch a rocket
-    events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base1});
-    events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base1});
-    events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base1});
 }
 
 fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
@@ -156,12 +152,12 @@ fn rocket_launching_system(
                 },
                 sprite: Sprite::new(Vec2::new(12.0, 36.0)),
                 ..Default::default()
-            }).insert(Rocket{ thrust : thrust });
+            }).insert(Rocket{ thrust : thrust, fuel : 6.0 });
         }
     }
 }
 
-fn rocket_update(
+fn rocket_move_update(
     mut rocket_query: Query<(&Rocket, &mut Transform)>, 
     time: Res<Time>
 ) {
@@ -175,6 +171,35 @@ fn rocket_update(
     }
 }
 
+fn rocket_fuel_update(
+    mut rocket_query: Query<(Entity, &mut Rocket)>, 
+    mut commands: Commands,
+    time: Res<Time>
+) {
+    for (entity, mut rocket) in rocket_query.iter_mut() {
+        rocket.fuel -= time.delta_seconds();
+        if rocket.fuel < 0.0 {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn firing_system(
+    mouse_button_input: Res<Input<MouseButton>>,
+    base_query: Query<(Entity, &FiringBase)>, 
+    mut events: EventWriter<RocketLaunch>,
+
+) {
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        // Test launch a rockets
+        for (base, _) in base_query.iter() {
+            events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base});
+            events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base});
+            events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base});
+        }
+    }
+}
+
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
@@ -183,6 +208,8 @@ fn main() {
                 .add_startup_system(setup.system())
                 .add_system(asteroid_changed.system())
                 .add_system(rocket_launching_system.system())
-                .add_system(rocket_update.system())
+                .add_system(rocket_move_update.system())
+                .add_system(rocket_fuel_update.system())
+                .add_system(firing_system.system())
                 .run();
 }
