@@ -68,6 +68,8 @@ fn setup(
     weapon_materials.rocket = materials.add(rocket_texture_handle.into());
     // Test launch a rocket
     events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base1});
+    events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base1});
+    events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base1});
 }
 
 fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
@@ -142,7 +144,7 @@ fn rocket_launching_system(
     for launch_event in events.iter() {
         if let Ok(parent_transform) = transform_query.get(launch_event.parent) { 
             let rocket_rotation = parent_transform.rotation * Quat::from_rotation_z(launch_event.angle);
-            let direction = rocket_rotation * Vec3::new(1.0, 0.0 ,0.0);
+            let direction = rocket_rotation * Vec3::new(0.0, 1.0 ,0.0);
             let offset = direction * launch_event.offset;
             let thrust = Vec2::new(direction.x, direction.y) * launch_event.thrust;
             commands.spawn_bundle(SpriteBundle {
@@ -166,7 +168,8 @@ fn rocket_update(
     for (rocket, mut transform) in rocket_query.iter_mut() {
         let thrust = Vec3::new(rocket.thrust.x, rocket.thrust.y, 0.0);
         if thrust.length() > 1.0 {
-            transform.rotation = Quat::from_rotation_arc(Vec3::new(1.0,0.0,0.0), -thrust);
+            let goal_rotation = Quat::from_rotation_arc(Vec3::new(0.0,1.0,0.0), thrust.normalize());
+            transform.rotation = transform.rotation.lerp(goal_rotation, 0.3);
             transform.translation += thrust * time.delta_seconds();
         }
     }
