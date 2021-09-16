@@ -14,7 +14,7 @@ Stages Of development before LAN party
   + Rocket
     + ~~Basic movement~~
     + ~~Start base~~
-    + Gravity
+    + ~~Gravity~~
     + ~~Lifetime~~
     + Collisions
   + UI 

@@ -186,16 +186,33 @@ fn rocket_fuel_update(
 
 fn firing_system(
     mouse_button_input: Res<Input<MouseButton>>,
-    base_query: Query<(Entity, &FiringBase)>, 
+    base_query: Query<Entity, With<FiringBase>>, 
     mut events: EventWriter<RocketLaunch>,
 
 ) {
     if mouse_button_input.just_pressed(MouseButton::Left) {
         // Test launch a rockets
-        for (base, _) in base_query.iter() {
+        for base in base_query.iter() {
             events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base});
+        }
+    }
+}
+
+fn gravity_system(
+    mut rocket_query : Query<(&mut Rocket, &GlobalTransform)>,
+    asteroid_query : Query<(&Asteroid, &GlobalTransform)>
+) {
+    for (mut rocket, rocket_transform) in rocket_query.iter_mut() {
+        for (asteroid, asteroid_transform) in asteroid_query.iter() {
+            let delta3 = rocket_transform.translation - asteroid_transform.translation;
+            let delta = Vec2::new(delta3.x, delta3.y);
+            if delta.length() > 1.0 {
+                let mass = 3.0 * asteroid.radius * asteroid.radius;
+                let dist_sq = delta.length_squared();
+                rocket.thrust -= (mass / dist_sq) * delta.normalize();
+            }
         }
     }
 }
@@ -211,5 +228,6 @@ fn main() {
                 .add_system(rocket_move_update.system())
                 .add_system(rocket_fuel_update.system())
                 .add_system(firing_system.system())
+                .add_system(gravity_system.system())
                 .run();
 }
