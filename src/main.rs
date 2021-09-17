@@ -52,9 +52,19 @@ struct RocketExplode {
 }
 
 // Resourses 
-#[derive(Default)]
 struct WeaponMaterials {
     rocket : Handle<ColorMaterial>
+}
+
+impl FromWorld for WeaponMaterials {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.get_resource::<AssetServer>().unwrap();
+        let rocket_texture_handle = asset_server.load("images/rocket.png");
+        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
+        WeaponMaterials {
+            rocket : materials.add(rocket_texture_handle.into())
+        }
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -71,14 +81,14 @@ impl Default for TurnPhase {
 #[derive(Default)]
 struct TurnState {
     phase : TurnPhase,
-    active_base : Option<Entity>
+    active_base : Option<Entity>,
+    firing_angle : f32,
 }
 
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    mut weapon_materials : ResMut<WeaponMaterials>,
     mut turn_state : ResMut<TurnState>
 ) {
     // cameras
@@ -105,9 +115,6 @@ fn setup(
     add_base(&mut commands, 2.0, base_material.clone(), ast_2);
     add_base(&mut commands, 3.0, base_material.clone(), ast_3);
     turn_state.active_base = Some(base_1);
-    // Load weapon textures
-    let rocket_texture_handle = asset_server.load("images/rocket.png");
-    weapon_materials.rocket = materials.add(rocket_texture_handle.into());
 }
 
 fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
@@ -291,9 +298,11 @@ fn turn_update(
     mut turn_state : ResMut<TurnState>, 
     weapon_query : Query<&MovingWeapon>
 ) {
-    if weapon_query.iter().is_empty() {
+    if turn_state.phase == TurnPhase::Firing && weapon_query.iter().is_empty() {
         turn_state.phase = TurnPhase::Aiming;
-    } else {
+        turn_state.firing_angle = 0.0;
+    } 
+    if turn_state.phase == TurnPhase::Aiming && !weapon_query.iter().is_empty() {
         turn_state.phase = TurnPhase::Firing;
     }
 }

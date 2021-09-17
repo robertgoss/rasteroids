@@ -24,8 +24,8 @@ impl Box {
     }
 
     fn lines(self : &Self) -> [Line; 4] {
-        let local_x3 = self.rotation * Vec3::new(self.size.x, 0.0, 0.0);
-        let local_y3 = self.rotation * Vec3::new(self.size.x, 0.0, 0.0);
+        let local_x3 = self.rotation * Vec3::new(self.size.x * 0.5, 0.0, 0.0);
+        let local_y3 = self.rotation * Vec3::new(0.0, self.size.y * 0.5, 0.0);
         let local_x = Vec2::new(local_x3.x, local_x3.y);
         let local_y = Vec2::new(local_y3.x, local_y3.y);
         let points : [Vec2; 4] = [
