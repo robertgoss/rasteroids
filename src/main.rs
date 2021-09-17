@@ -2,70 +2,15 @@
 
 use bevy::prelude::*;
 
-mod collide;
+pub mod collide;
+pub mod base;
+pub mod asteroids;
+pub mod rocket;
 
+use asteroids::{add_asteroid, asteroid_changed, Asteroid};
+use base::{add_base};
+use rocket::{Rocket, MovingWeapon, WeaponMaterials, RocketLaunch, RocketExplode, rocket_explode, rocket_launching_system, rocket_move_update, rocket_fuel_update};
 
-
-struct AsteroidDrawable;
-struct Asteroid{
-    max_radius : f32,
-    radius : f32
-}
-
-impl Asteroid {
-    pub fn bound(self : &Self, transform : &GlobalTransform) -> collide::Circle {
-        let centre = Vec2::new(transform.translation.x, transform.translation.y);
-        collide::Circle { radius : self.radius, centre : centre }
-    }
-}
-
-struct Base {
-    angle : f32,
-    offset : f32
-}
-
-struct MovingWeapon;
-
-struct Rocket {
-    thrust : Vec2,
-    fuel : f32,
-    size : Vec2
-}
-
-impl Rocket {
-    pub fn bound(self : &Self, transform : &GlobalTransform) -> collide::Box {
-        let centre = Vec2::new(transform.translation.x, transform.translation.y);
-        collide::Box { centre : centre, size : self.size, rotation : transform.rotation }
-    }
-}
-
-// Events
-struct RocketLaunch {
-    angle : f32,
-    offset : f32,
-    thrust : f32,
-    parent : Entity
-}
-
-struct RocketExplode {
-    rocket : Entity
-}
-
-// Resourses 
-struct WeaponMaterials {
-    rocket : Handle<ColorMaterial>
-}
-
-impl FromWorld for WeaponMaterials {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server = world.get_resource::<AssetServer>().unwrap();
-        let rocket_texture_handle = asset_server.load("images/rocket.png");
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
-        WeaponMaterials {
-            rocket : materials.add(rocket_texture_handle.into())
-        }
-    }
-}
 
 #[derive(PartialEq, Eq)]
 enum TurnPhase {
@@ -117,124 +62,6 @@ fn setup(
     turn_state.active_base = Some(base_1);
 }
 
-fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
-    let max_radius = 100.0;
-    commands.spawn().insert(Asteroid{
-        max_radius : 100.0,
-        radius : 50.0
-    }).insert(Transform::from_xyz(x, y, 0.0)
-    ).insert(GlobalTransform::from_xyz(x, y, 0.0)
-    ).with_children(
-        |parent| {
-            parent.spawn_bundle(SpriteBundle {
-                material: texture,
-                transform: Transform::identity(),
-                sprite: Sprite::new(Vec2::new(2.0*max_radius, 2.0*max_radius)),
-                ..Default::default()
-            }).insert(AsteroidDrawable);
-        }
-    ).id()
-}
-
-fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial>, asteroid : Entity) -> Entity {
-    commands.spawn_bundle(SpriteBundle {
-        material: texture,
-        transform: Transform::from_rotation(Quat::from_rotation_z(angle)),
-        sprite: Sprite::new(Vec2::new(50.0, 50.0)),
-        ..Default::default()
-    }).insert(Base{
-        angle : angle,
-        offset : -8.5
-    }).insert(Parent(asteroid)
-    ).id()
-}
-
-// If an asteroid's radius changes we want to update it's sprite and reposition bases on the surface
-// so they stay on the surface
-fn asteroid_changed(
-    query: Query<(&Asteroid, &Children), 
-    Changed<Asteroid>>,
-    mut transform_query: Query<&mut Transform>,
-    bases_query: Query<&Base>,
-    asteroid_drawable_query: Query<&AsteroidDrawable>
-) {
-    for (asteroid, children) in query.iter() {
-        // Reposition any bases and update the drawable
-        for child in children.iter() {
-            // If this is a base reposition it
-            if let Ok(base) = bases_query.get(*child) {
-                if let Ok(mut transform) = transform_query.get_mut(*child) {
-                    let angle = base.angle;
-                    let radius = asteroid.radius - base.offset;
-                    transform.translation = Vec3::new(-radius * angle.sin(), radius * angle.cos(), 0.0);
-                }
-            } 
-            // Asteroid drawable children need to be scales to new size
-            if asteroid_drawable_query.get(*child).is_ok() {
-                if let Ok(mut transform) = transform_query.get_mut(*child) {
-                    let scale = asteroid.radius / asteroid.max_radius;
-                    transform.scale = Vec3::new(scale, scale, scale);
-                }
-            }
-        }
-    }
-}
-
-fn rocket_launching_system(
-    mut events: EventReader<RocketLaunch>,
-    mut commands: Commands,
-    transform_query: Query<&GlobalTransform>,
-    materials : Res<WeaponMaterials>
-) {
-    for launch_event in events.iter() {
-        if let Ok(parent_transform) = transform_query.get(launch_event.parent) { 
-            let rocket_rotation = parent_transform.rotation * Quat::from_rotation_z(launch_event.angle);
-            let direction = rocket_rotation * Vec3::new(0.0, 1.0 ,0.0);
-            let offset = direction * launch_event.offset;
-            let thrust = Vec2::new(direction.x, direction.y) * launch_event.thrust;
-            let size = Vec2::new(12.0, 36.0);
-            commands.spawn_bundle(SpriteBundle {
-                material: materials.rocket.clone(),
-                transform: Transform { 
-                    translation : parent_transform.translation + offset,
-                    rotation : rocket_rotation,
-                    scale : Vec3::new(1.0,1.0,1.0)
-                },
-                sprite: Sprite::new(size),
-                ..Default::default()
-            }).insert(
-                Rocket{ thrust : thrust, fuel : 6.0 , size}
-            ).insert(MovingWeapon);
-        }
-    }
-}
-
-fn rocket_move_update(
-    mut rocket_query: Query<(&Rocket, &mut Transform)>, 
-    time: Res<Time>
-) {
-    for (rocket, mut transform) in rocket_query.iter_mut() {
-        let thrust = Vec3::new(rocket.thrust.x, rocket.thrust.y, 0.0);
-        if thrust.length() > 1.0 {
-            let goal_rotation = Quat::from_rotation_arc(Vec3::new(0.0,1.0,0.0), thrust.normalize());
-            transform.rotation = transform.rotation.lerp(goal_rotation, 0.3);
-            transform.translation += thrust * time.delta_seconds();
-        }
-    }
-}
-
-fn rocket_fuel_update(
-    mut rocket_query: Query<(Entity, &mut Rocket)>, 
-    mut commands: Commands,
-    time: Res<Time>
-) {
-    for (entity, mut rocket) in rocket_query.iter_mut() {
-        rocket.fuel -= time.delta_seconds();
-        if rocket.fuel < 0.0 {
-            commands.entity(entity).despawn_recursive();
-        }
-    }
-}
 
 fn firing_system(
     mouse_button_input: Res<Input<MouseButton>>,
@@ -278,18 +105,6 @@ fn rocket_asteroid_collide_system(
             if rocket.bound(rocket_transform).collide(asteroid.bound(asteroid_transform)) {
                 events.send(RocketExplode { rocket : entity})
             }
-        }
-    }
-}
-
-fn rocket_explode(
-    mut events: EventReader<RocketExplode>,
-    mut commands: Commands,
-    rocket_query : Query<&Rocket>
-) {
-    for event in events.iter() {
-        if rocket_query.get(event.rocket).is_ok() { 
-            commands.entity(event.rocket).despawn_recursive();
         }
     }
 }
