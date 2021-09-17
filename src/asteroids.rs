@@ -38,8 +38,7 @@ pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<
 // If an asteroid's radius changes we want to update it's sprite and reposition bases on the surface
 // so they stay on the surface
 pub fn asteroid_changed(
-    query: Query<(&Asteroid, &Children), 
-    Changed<Asteroid>>,
+    query: Query<(&Asteroid, &Children), Changed<Asteroid>>,
     mut transform_query: Query<&mut Transform>,
     bases_query: Query<&Base>,
     asteroid_drawable_query: Query<&AsteroidDrawable>

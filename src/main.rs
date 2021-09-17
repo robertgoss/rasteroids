@@ -1,6 +1,6 @@
 #![feature(exact_size_is_empty)]
 
-use bevy::prelude::*;
+use bevy::{input::mouse::MouseMotion, prelude::*};
 
 pub mod collide;
 pub mod base;
@@ -8,15 +8,16 @@ pub mod asteroids;
 pub mod rocket;
 
 use asteroids::{add_asteroid, asteroid_changed, Asteroid};
-use base::{add_base};
+use base::{add_base, Base};
 use rocket::{Rocket, MovingWeapon, WeaponMaterials, RocketLaunch, RocketExplode, rocket_explode, rocket_launching_system, rocket_move_update, rocket_fuel_update};
 
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 enum TurnPhase {
     Aiming, 
     Firing
 }
+
 impl Default for TurnPhase {
     fn default() -> Self {
         TurnPhase::Aiming
@@ -28,6 +29,29 @@ struct TurnState {
     phase : TurnPhase,
     active_base : Option<Entity>,
     firing_angle : f32,
+    power : f32
+}
+
+// Event
+struct TurnPhaseChanged {
+    new_phase : TurnPhase
+}
+
+// Resource
+
+pub struct UIMaterials {
+    retical : Handle<ColorMaterial>
+}
+
+impl FromWorld for UIMaterials {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.get_resource::<AssetServer>().unwrap();
+        let retical_texture_handle = asset_server.load("images/missile_target_2.png");
+        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
+        UIMaterials {
+            retical : materials.add(retical_texture_handle.into())
+        }
+    }
 }
 
 fn setup(
@@ -64,17 +88,49 @@ fn setup(
 
 
 fn firing_system(
-    mouse_button_input: Res<Input<MouseButton>>,
+    key_input: Res<Input<KeyCode>>,
     mut events: EventWriter<RocketLaunch>,
     turn_state : Res<TurnState>
 ) {
-    if mouse_button_input.just_pressed(MouseButton::Left) && turn_state.phase == TurnPhase::Aiming {
+    if key_input.just_pressed(KeyCode::Space) && turn_state.phase == TurnPhase::Aiming {
         // Test launch a rockets
         if let Some(base) = turn_state.active_base {
             events.send(RocketLaunch{angle : 0.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : 1.0, offset : 0.0, thrust : 100.0, parent : base});
             events.send(RocketLaunch{angle : -1.0, offset : 0.0, thrust : 100.0, parent : base});
         }
+    }
+}
+
+fn aiming_system(
+    key_input: Res<Input<KeyCode>>,
+    mut turn_state : ResMut<TurnState>,
+    time : Res<Time>
+) {
+    if turn_state.phase == TurnPhase::Aiming {
+        if key_input.pressed(KeyCode::A) {
+            turn_state.firing_angle += time.delta_seconds() * 1.5;
+        }
+        if key_input.pressed(KeyCode::D) {
+            turn_state.firing_angle -= time.delta_seconds() * 1.5;
+        }
+
+        turn_state.firing_angle = turn_state.firing_angle.clamp(
+            -std::f32::consts::FRAC_PI_2, 
+            std::f32::consts::FRAC_PI_2
+        );
+
+        if key_input.pressed(KeyCode::W) {
+            turn_state.power += time.delta_seconds() * 60.0;
+        }
+        if key_input.pressed(KeyCode::S) {
+            turn_state.power -= time.delta_seconds() * 60.0;
+        }
+
+        turn_state.power = turn_state.power.clamp(
+            10.0,
+            100.0
+        );
     }
 }
 
@@ -109,16 +165,47 @@ fn rocket_asteroid_collide_system(
     }
 }
 
-fn turn_update(
+fn turn_phase_update( 
     mut turn_state : ResMut<TurnState>, 
-    weapon_query : Query<&MovingWeapon>
+    weapon_query : Query<&MovingWeapon>,
+    mut events : EventWriter<TurnPhaseChanged>
 ) {
     if turn_state.phase == TurnPhase::Firing && weapon_query.iter().is_empty() {
         turn_state.phase = TurnPhase::Aiming;
-        turn_state.firing_angle = 0.0;
+        events.send(TurnPhaseChanged{new_phase : TurnPhase::Aiming});
     } 
     if turn_state.phase == TurnPhase::Aiming && !weapon_query.iter().is_empty() {
         turn_state.phase = TurnPhase::Firing;
+        events.send(TurnPhaseChanged{new_phase : TurnPhase::Firing});
+    }
+}
+
+fn turn_setup(mut events : EventWriter<TurnPhaseChanged>) {
+    events.send(TurnPhaseChanged{new_phase : TurnPhase::Aiming});
+}
+
+
+fn aiming_ui_aiming_start(
+    mut commands: Commands,
+    materials : Res<UIMaterials>,
+    turn_state : Res<TurnState>,
+    mut events : EventReader<TurnPhaseChanged>
+) {
+    for event in events.iter() {
+        if event.new_phase == TurnPhase::Aiming {
+
+        }
+    }
+}
+
+fn aiming_ui_aiming_end(
+    mut commands: Commands,
+    mut events : EventReader<TurnPhaseChanged>
+) {
+    for event in events.iter() {
+        if event.new_phase == TurnPhase::Firing {
+
+        }
     }
 }
 
@@ -127,7 +214,9 @@ fn main() {
                 .add_plugins(DefaultPlugins)
                 .add_event::<RocketLaunch>()
                 .add_event::<RocketExplode>()
+                .add_event::<TurnPhaseChanged>()
                 .init_resource::<WeaponMaterials>()
+                .init_resource::<UIMaterials>()
                 .init_resource::<TurnState>()
                 .add_startup_system(setup.system())
                 .add_system(asteroid_changed.system())
@@ -138,6 +227,10 @@ fn main() {
                 .add_system(gravity_system.system())
                 .add_system(rocket_asteroid_collide_system.system())
                 .add_system(rocket_explode.system())
-                .add_system(turn_update.system())
+                .add_system(turn_phase_update.system())
+                .add_system(aiming_system.system())
+                .add_startup_system(turn_setup.system())
+                .add_system(aiming_ui_aiming_start.system())
+                .add_system(aiming_ui_aiming_end.system())
                 .run();
 }
