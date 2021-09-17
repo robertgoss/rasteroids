@@ -11,12 +11,12 @@ Stages Of development before LAN party
   + ~~System to update bases to edge of asteroid~~
   + ~~Background~~
 + Firing
-  + Rocket
+  + ~~Rocket~~
     + ~~Basic movement~~
     + ~~Start base~~
     + ~~Gravity~~
     + ~~Lifetime~~
-    + Collisions
+    + ~~Collisions~~
   + UI 
     + ~~Mouse click~~
     + Direction

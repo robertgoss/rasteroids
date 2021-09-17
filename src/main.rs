@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+mod collide;
 
 
 
@@ -9,6 +10,13 @@ struct AsteroidDrawable;
 struct Asteroid{
     max_radius : f32,
     radius : f32
+}
+
+impl Asteroid {
+    pub fn bound(self : &Self, transform : &GlobalTransform) -> collide::Circle {
+        let centre = Vec2::new(transform.translation.x, transform.translation.y);
+        collide::Circle { radius : self.radius, centre : centre }
+    }
 }
 
 struct Base {
@@ -20,7 +28,15 @@ struct MovingWeapon;
 
 struct Rocket {
     thrust : Vec2,
-    fuel : f32
+    fuel : f32,
+    size : Vec2
+}
+
+impl Rocket {
+    pub fn bound(self : &Self, transform : &GlobalTransform) -> collide::Box {
+        let centre = Vec2::new(transform.translation.x, transform.translation.y);
+        collide::Box { centre : centre, size : self.size, rotation : transform.rotation }
+    }
 }
 
 // Events
@@ -29,6 +45,10 @@ struct RocketLaunch {
     offset : f32,
     thrust : f32,
     parent : Entity
+}
+
+struct RocketExplode {
+    rocket : Entity
 }
 
 // Resourses 
@@ -165,6 +185,7 @@ fn rocket_launching_system(
             let direction = rocket_rotation * Vec3::new(0.0, 1.0 ,0.0);
             let offset = direction * launch_event.offset;
             let thrust = Vec2::new(direction.x, direction.y) * launch_event.thrust;
+            let size = Vec2::new(12.0, 36.0);
             commands.spawn_bundle(SpriteBundle {
                 material: materials.rocket.clone(),
                 transform: Transform { 
@@ -172,10 +193,10 @@ fn rocket_launching_system(
                     rotation : rocket_rotation,
                     scale : Vec3::new(1.0,1.0,1.0)
                 },
-                sprite: Sprite::new(Vec2::new(12.0, 36.0)),
+                sprite: Sprite::new(size),
                 ..Default::default()
             }).insert(
-                Rocket{ thrust : thrust, fuel : 6.0 }
+                Rocket{ thrust : thrust, fuel : 6.0 , size}
             ).insert(MovingWeapon);
         }
     }
@@ -240,6 +261,32 @@ fn gravity_system(
     }
 }
 
+fn rocket_asteroid_collide_system(
+    rocket_query : Query<(Entity, &Rocket, &GlobalTransform)>,
+    asteroid_query : Query<(&Asteroid, &GlobalTransform)>,
+    mut events: EventWriter<RocketExplode>
+) {
+    for (entity, rocket, rocket_transform) in rocket_query.iter() {
+        for (asteroid, asteroid_transform) in asteroid_query.iter() {
+            if rocket.bound(rocket_transform).collide(asteroid.bound(asteroid_transform)) {
+                events.send(RocketExplode { rocket : entity})
+            }
+        }
+    }
+}
+
+fn rocket_explode(
+    mut events: EventReader<RocketExplode>,
+    mut commands: Commands,
+    rocket_query : Query<&Rocket>
+) {
+    for event in events.iter() {
+        if rocket_query.get(event.rocket).is_ok() { 
+            commands.entity(event.rocket).despawn_recursive();
+        }
+    }
+}
+
 fn turn_update(
     mut turn_state : ResMut<TurnState>, 
     weapon_query : Query<&MovingWeapon>
@@ -255,6 +302,7 @@ fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
                 .add_event::<RocketLaunch>()
+                .add_event::<RocketExplode>()
                 .init_resource::<WeaponMaterials>()
                 .init_resource::<TurnState>()
                 .add_startup_system(setup.system())
@@ -264,6 +312,8 @@ fn main() {
                 .add_system(rocket_fuel_update.system())
                 .add_system(firing_system.system())
                 .add_system(gravity_system.system())
+                .add_system(rocket_asteroid_collide_system.system())
+                .add_system(rocket_explode.system())
                 .add_system(turn_update.system())
                 .run();
 }
