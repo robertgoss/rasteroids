@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::turn::{TurnPhase, TurnState, TurnPhaseChanged};
+use super::turn::{TurnPhase, TurnState, TurnStart, TurnFiring};
 use super::weapon::{Launch, WeaponType, WeaponTracer};
 
 // Components
@@ -43,16 +43,12 @@ fn aiming_system(
 // Systems
 fn aiming_ui_aiming_start(
     mut commands: Commands,
-    mut events : EventReader<TurnPhaseChanged>,
-    mut turn_state : ResMut<TurnState>
+    mut events : EventReader<TurnStart>
 ) {
-    for event in events.iter() {
-        if event.new_phase == TurnPhase::Aiming {
-            commands.spawn().insert(AimingTracerTimer)
-                            .insert(Timer::from_seconds(0.15, true));
-            turn_state.firing_angle = 0.0;
-            turn_state.power = 70.0;
-        }
+    for _ in events.iter() {
+        commands.spawn().insert(AimingTracerTimer)
+                        .insert(Timer::from_seconds(0.15, true));
+            
     }
 }
 
@@ -67,7 +63,7 @@ fn aiming_ui_timer_system(
             if let Some(base) = turn_state.active_base {
                 events.send(Launch{
                     angle : turn_state.firing_angle, 
-                    offset : 0.0, 
+                    offset : 10.0, 
                     thrust : turn_state.power, 
                     parent : base, 
                     weapon_type : WeaponType::Tracer
@@ -79,18 +75,16 @@ fn aiming_ui_timer_system(
 
 fn aiming_ui_aiming_end(
     mut commands: Commands,
-    mut events : EventReader<TurnPhaseChanged>,
+    mut events : EventReader<TurnFiring>,
     timer_query : Query<Entity, With<AimingTracerTimer>>,
     tracer_query : Query<Entity, With<WeaponTracer>>
 ) {
-    for event in events.iter() {
-        if event.new_phase == TurnPhase::Firing {
-            for entity in timer_query.iter() {
-                commands.entity(entity).despawn_recursive();
-            }
-            for entity in tracer_query.iter() {
-                commands.entity(entity).despawn_recursive();
-            }
+    for _ in events.iter() {
+        for entity in timer_query.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+        for entity in tracer_query.iter() {
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

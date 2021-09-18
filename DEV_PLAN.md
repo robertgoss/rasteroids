@@ -24,11 +24,12 @@ Stages Of development before LAN party
     + ~~Tracer~~
 + Turns
   + Two fixed players
-    + Base ownership
+    + ~~Base ownership~~
     + Fixed Colours
     + ~Only fire in firing phase~
-    + End turn
-    + Switch turns
+    + ~~End turn~~
+    + ~~Switch turns~~
+    + UI player order - current player
 + Damage
   + Bases
     + Display health

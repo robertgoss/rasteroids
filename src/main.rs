@@ -8,20 +8,22 @@ pub mod asteroids;
 pub mod weapon;
 pub mod turn;
 pub mod aiming;
+pub mod player;
 
 use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
 use base::{add_base};
 use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, Explode};
-use turn::{TurnPlugin, TurnState, TurnPhase};
+use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
 use aiming::AimingPlugin;
-
+use player::{setup_players, PlayerOrder, PlayerPlugin};
 
 
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut players: ResMut<PlayerOrder>,
     asset_server: Res<AssetServer>,
-    mut turn_state : ResMut<TurnState>
+    mut events : EventWriter<TurnStart>
 ) {
     // cameras
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
@@ -33,6 +35,11 @@ fn setup(
         transform: Transform::from_scale(Vec3::new(1.5, 1.5, 1.5)),
         ..Default::default()
     });
+    // Players 
+    setup_players(&mut commands, &mut players);
+    // Hardcode for now
+    let player_1 = players.order[0];
+    let player_2 = players.order[1];
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
@@ -42,29 +49,31 @@ fn setup(
     // Bases
     let base_texture_handle = asset_server.load("images/base.png");
     let base_material = materials.add(base_texture_handle.into());
-    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1);
-    add_base(&mut commands, 1.0, base_material.clone(), ast_1);
-    add_base(&mut commands, 2.0, base_material.clone(), ast_2);
-    add_base(&mut commands, 3.0, base_material.clone(), ast_3);
-    turn_state.active_base = Some(base_1);
+    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1, player_1);
+    add_base(&mut commands, 1.0, base_material.clone(), ast_1, player_2);
+    add_base(&mut commands, 2.0, base_material.clone(), ast_2, player_1);
+    add_base(&mut commands, 3.0, base_material.clone(), ast_3, player_2);
+    events.send(TurnStart{new_base : base_1});
 }
 
 
 fn firing_system(
     key_input: Res<Input<KeyCode>>,
     turn_state : Res<TurnState>,
-    mut events: EventWriter<Launch>
+    mut launch_events: EventWriter<Launch>,
+    mut turn_events : EventWriter<TurnFiring>
 ) {
     if key_input.just_pressed(KeyCode::Space) && turn_state.phase == TurnPhase::Aiming {
         // Test launch a rockets
         if let Some(base) = turn_state.active_base {
-            events.send(Launch{
+            launch_events.send(Launch{
                 angle : turn_state.firing_angle, 
                 offset : 12.0, 
                 thrust : turn_state.power, 
                 parent : base, 
                 weapon_type : WeaponType::Rocket
             });
+            turn_events.send(TurnFiring);
         }
     }
 }
@@ -103,6 +112,7 @@ fn rocket_asteroid_collide_system(
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
+                .add_plugin(PlayerPlugin)
                 .add_plugin(AsteroidPlugin)
                 .add_plugin(WeaponPlugin)
                 .add_plugin(TurnPlugin)

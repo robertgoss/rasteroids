@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 
 use super::collide::Box;
+use super::turn::TurnEnd;
 
 // Components
-
-pub struct ActiveWeapon;
 
 pub struct Weapon {
     pub thrust : Vec2,
     pub fuel : f32,
-    pub size : Vec2
+    pub size : Vec2,
+    pub active : bool
 }
 
 pub struct WeaponTracer;
@@ -92,11 +92,15 @@ impl FromWorld for WeaponMaterials {
 pub fn weapon_fuel_update(
     mut weapon_query: Query<(Entity, &mut Weapon)>, 
     mut commands: Commands,
-    time: Res<Time>
+    time: Res<Time>,
+    mut events_turn : EventWriter<TurnEnd>
 ) {
     for (entity, mut weapon) in weapon_query.iter_mut() {
         weapon.fuel -= time.delta_seconds();
         if weapon.fuel < 0.0 {
+            if weapon.active {
+                events_turn.send(TurnEnd);
+            }
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -126,7 +130,8 @@ fn launch_weapon(
         Weapon{ 
             thrust : thrust, 
             fuel : launch.weapon_type.fuel(), 
-            size : size
+            size : size,
+            active : launch.weapon_type.is_active()
         }
     ).id()
 }
@@ -145,9 +150,6 @@ pub fn launching_system(
                 &materials, 
                 launch_event
             );
-            if launch_event.weapon_type.is_active() {
-                commands.entity(weapon_entity).insert(ActiveWeapon);
-            }
             if launch_event.weapon_type == WeaponType::Tracer {
                 commands.entity(weapon_entity).insert(WeaponTracer);
             }
@@ -172,10 +174,14 @@ pub fn weapon_move_update(
 pub fn weapon_explode(
     mut events: EventReader<Explode>,
     mut commands: Commands,
-    weapon_query : Query<&Weapon>
+    weapon_query : Query<&Weapon>,
+    mut events_turn : EventWriter<TurnEnd>
 ) {
     for event in events.iter() {
-        if weapon_query.get(event.entity).is_ok() { 
+        if let Ok(weapon) = weapon_query.get(event.entity) { 
+            if weapon.active {
+                events_turn.send(TurnEnd);
+            }
             commands.entity(event.entity).despawn_recursive();
         }
     }

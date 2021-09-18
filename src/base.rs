@@ -5,7 +5,11 @@ pub struct Base {
     pub offset : f32
 }
 
-pub fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial>, asteroid : Entity) -> Entity {
+pub struct BaseOwner {
+    pub entity : Entity
+}
+
+pub fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMaterial>, asteroid : Entity, player : Entity) -> Entity {
     commands.spawn_bundle(SpriteBundle {
         material: texture,
         transform: Transform::from_rotation(Quat::from_rotation_z(angle)),
@@ -15,5 +19,6 @@ pub fn add_base(commands: &mut Commands, angle : f32, texture : Handle<ColorMate
         angle : angle,
         offset : -8.5
     }).insert(Parent(asteroid)
+    ).insert(BaseOwner{entity : player}
     ).id()
 }
