@@ -10,17 +10,18 @@ Stages Of development before LAN party
   + ~~Bases (Fixed)~~
   + ~~System to update bases to edge of asteroid~~
   + ~~Background~~
-+ Firing
++ ~~Firing~~
   + ~~Rocket~~
     + ~~Basic movement~~
     + ~~Start base~~
     + ~~Gravity~~
     + ~~Lifetime~~
     + ~~Collisions~~
-  + UI 
+  + ~~UI~~ 
     + ~~Mouse click~~
-    + Direction
-    + Magnitude
+    + ~~Direction~~
+    + ~~Magnitude~~
+    + ~~Tracer~~
 + Turns
   + Two fixed players
     + Base ownership
