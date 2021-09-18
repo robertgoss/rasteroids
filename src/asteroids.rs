@@ -64,3 +64,12 @@ pub fn asteroid_changed(
         }
     }
 }
+
+// Plugin
+pub struct AsteroidPlugin;
+
+impl Plugin for AsteroidPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        app.add_system(asteroid_changed.system());
+    }
+}

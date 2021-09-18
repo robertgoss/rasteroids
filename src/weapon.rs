@@ -180,3 +180,18 @@ pub fn weapon_explode(
         }
     }
 }
+
+// Plugins
+pub struct WeaponPlugin;
+
+impl Plugin for WeaponPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        app.add_event::<Launch>()
+           .add_event::<Explode>()
+           .init_resource::<WeaponMaterials>()
+           .add_system(launching_system.system())
+           .add_system(weapon_move_update.system())
+           .add_system(weapon_fuel_update.system())
+           .add_system(weapon_explode.system());
+    }
+}

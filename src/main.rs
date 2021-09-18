@@ -6,36 +6,14 @@ pub mod collide;
 pub mod base;
 pub mod asteroids;
 pub mod weapon;
+pub mod turn;
+pub mod aiming;
 
-use asteroids::{add_asteroid, asteroid_changed, Asteroid};
+use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
 use base::{add_base};
-use weapon::{Weapon, WeaponTracer, WeaponType, ActiveWeapon, WeaponMaterials, Launch, Explode, weapon_explode, launching_system, weapon_move_update, weapon_fuel_update};
-
-
-#[derive(PartialEq, Eq, Debug)]
-enum TurnPhase {
-    Aiming, 
-    Firing
-}
-
-impl Default for TurnPhase {
-    fn default() -> Self {
-        TurnPhase::Aiming
-    }
-}
-
-#[derive(Default)]
-struct TurnState {
-    phase : TurnPhase,
-    active_base : Option<Entity>,
-    firing_angle : f32,
-    power : f32
-}
-
-// Event
-struct TurnPhaseChanged {
-    new_phase : TurnPhase
-}
+use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, Explode};
+use turn::{TurnPlugin, TurnState, TurnPhase};
+use aiming::AimingPlugin;
 
 
 
@@ -91,38 +69,6 @@ fn firing_system(
     }
 }
 
-fn aiming_system(
-    key_input: Res<Input<KeyCode>>,
-    mut turn_state : ResMut<TurnState>,
-    time : Res<Time>
-) {
-    if turn_state.phase == TurnPhase::Aiming {
-        if key_input.pressed(KeyCode::A) {
-            turn_state.firing_angle += time.delta_seconds() * 1.5;
-        }
-        if key_input.pressed(KeyCode::D) {
-            turn_state.firing_angle -= time.delta_seconds() * 1.5;
-        }
-
-        turn_state.firing_angle = turn_state.firing_angle.clamp(
-            -std::f32::consts::FRAC_PI_2, 
-            std::f32::consts::FRAC_PI_2
-        );
-
-        if key_input.pressed(KeyCode::W) {
-            turn_state.power += time.delta_seconds() * 60.0;
-        }
-        if key_input.pressed(KeyCode::S) {
-            turn_state.power -= time.delta_seconds() * 60.0;
-        }
-
-        turn_state.power = turn_state.power.clamp(
-            30.0,
-            200.0
-        );
-    }
-}
-
 fn gravity_system(
     mut rocket_query : Query<(&mut Weapon, &GlobalTransform)>,
     asteroid_query : Query<(&Asteroid, &GlobalTransform)>
@@ -154,103 +100,16 @@ fn rocket_asteroid_collide_system(
     }
 }
 
-fn turn_phase_update( 
-    mut turn_state : ResMut<TurnState>, 
-    weapon_query : Query<&ActiveWeapon>,
-    mut events : EventWriter<TurnPhaseChanged>
-) {
-    if turn_state.phase == TurnPhase::Firing && weapon_query.iter().is_empty() {
-        turn_state.phase = TurnPhase::Aiming;
-        events.send(TurnPhaseChanged{new_phase : TurnPhase::Aiming});
-    } 
-    if turn_state.phase == TurnPhase::Aiming && !weapon_query.iter().is_empty() {
-        turn_state.phase = TurnPhase::Firing;
-        events.send(TurnPhaseChanged{new_phase : TurnPhase::Firing});
-    }
-}
-
-fn turn_setup(mut events : EventWriter<TurnPhaseChanged>) {
-    events.send(TurnPhaseChanged{new_phase : TurnPhase::Aiming});
-}
-
-struct AimingTracerTimer;
-
-fn aiming_ui_aiming_start(
-    mut commands: Commands,
-    mut events : EventReader<TurnPhaseChanged>,
-    mut turn_state : ResMut<TurnState>
-) {
-    for event in events.iter() {
-        if event.new_phase == TurnPhase::Aiming {
-            commands.spawn().insert(AimingTracerTimer)
-                            .insert(Timer::from_seconds(0.15, true));
-            turn_state.firing_angle = 0.0;
-            turn_state.power = 70.0;
-        }
-    }
-}
-
-fn aiming_ui_timer_system(
-    time: Res<Time>, 
-    turn_state : Res<TurnState>,
-    mut timer_query: Query<&mut Timer, With<AimingTracerTimer>>,
-    mut events: EventWriter<Launch>
-) {
-    for mut timer in timer_query.iter_mut() {
-        if timer.tick(time.delta()).just_finished() {
-            if let Some(base) = turn_state.active_base {
-                events.send(Launch{
-                    angle : turn_state.firing_angle, 
-                    offset : 0.0, 
-                    thrust : turn_state.power, 
-                    parent : base, 
-                    weapon_type : WeaponType::Tracer
-                });
-            }
-        }
-    }
-}
-
-fn aiming_ui_aiming_end(
-    mut commands: Commands,
-    mut events : EventReader<TurnPhaseChanged>,
-    timer_query : Query<Entity, With<AimingTracerTimer>>,
-    tracer_query : Query<Entity, With<WeaponTracer>>
-) {
-    for event in events.iter() {
-        if event.new_phase == TurnPhase::Firing {
-            for entity in timer_query.iter() {
-                commands.entity(entity).despawn_recursive();
-            }
-            for entity in tracer_query.iter() {
-                commands.entity(entity).despawn_recursive();
-            }
-        }
-    }
-}
-
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
-                .add_event::<Launch>()
-                .add_event::<Explode>()
-                .add_event::<TurnPhaseChanged>()
-                .init_resource::<WeaponMaterials>()
-                .init_resource::<TurnState>()
+                .add_plugin(AsteroidPlugin)
+                .add_plugin(WeaponPlugin)
+                .add_plugin(TurnPlugin)
+                .add_plugin(AimingPlugin)
                 .add_startup_system(setup.system())
-                .add_system(asteroid_changed.system())
-                .add_system(launching_system.system())
-                .add_system(weapon_move_update.system())
-                .add_system(weapon_fuel_update.system())
                 .add_system(firing_system.system())
                 .add_system(gravity_system.system())
                 .add_system(rocket_asteroid_collide_system.system())
-                .add_system(weapon_explode.system())
-                .add_system(turn_phase_update.system())
-                .add_system(aiming_system.system())
-                .add_startup_system(turn_setup.system())
-                .add_system(aiming_ui_aiming_start.system())
-                .add_system(aiming_ui_aiming_end.system())
-                .add_system(aiming_ui_timer_system.system())
                 .run();
 }
