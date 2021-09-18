@@ -60,7 +60,7 @@ fn firing_system(
         if let Some(base) = turn_state.active_base {
             events.send(Launch{
                 angle : turn_state.firing_angle, 
-                offset : 0.0, 
+                offset : 12.0, 
                 thrust : turn_state.power, 
                 parent : base, 
                 weapon_type : WeaponType::Rocket
