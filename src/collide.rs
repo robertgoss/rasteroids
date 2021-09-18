@@ -18,7 +18,7 @@ pub struct Circle {
 
 impl Box {
     pub fn collide(self : &Self, circle : Circle) -> bool {
-        self.lines().iter().all(
+        self.lines().iter().any(
             |line| line.collide(&circle)
         )
     }
