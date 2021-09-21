@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::collide::Box;
 use super::turn::TurnEnd;
+use super::explosion::Explode;
 
 // Components
 
@@ -55,7 +56,7 @@ pub struct Launch {
     pub weapon_type : WeaponType
 }
 
-pub struct Explode {
+pub struct WeaponExplode {
     pub entity : Entity
 }
 
@@ -172,16 +173,19 @@ pub fn weapon_move_update(
 }
 
 pub fn weapon_explode(
-    mut events: EventReader<Explode>,
+    mut events: EventReader<WeaponExplode>,
     mut commands: Commands,
-    weapon_query : Query<&Weapon>,
-    mut events_turn : EventWriter<TurnEnd>
+    weapon_query : Query<(&Weapon, &GlobalTransform)>,
+    mut events_turn : EventWriter<TurnEnd>,
+    mut events_explosion : EventWriter<Explode>
 ) {
     for event in events.iter() {
-        if let Ok(weapon) = weapon_query.get(event.entity) { 
+        if let Ok((weapon, transform)) = weapon_query.get(event.entity) { 
             if weapon.active {
                 events_turn.send(TurnEnd);
             }
+            let pos = transform.translation;
+            events_explosion.send(Explode { pos : Vec2::new(pos.x, pos.y), power : 50.0 } );
             commands.entity(event.entity).despawn_recursive();
         }
     }
@@ -193,7 +197,7 @@ pub struct WeaponPlugin;
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_event::<Launch>()
-           .add_event::<Explode>()
+           .add_event::<WeaponExplode>()
            .init_resource::<WeaponMaterials>()
            .add_system(launching_system.system())
            .add_system(weapon_move_update.system())

@@ -1,6 +1,9 @@
 use bevy::prelude::*;
+use bevy::app::AppExit;
 
-use super::base::BaseOwner;
+use std::collections::BTreeSet;
+
+use super::base::{BaseOwner,BaseDestroyed};
 use super::turn::{TurnStart, TurnEnd};
 
 
@@ -12,7 +15,7 @@ pub struct PlayerOrder {
 
 pub struct Player {
     name : String,
-    bases : Vec<Entity>,
+    bases : BTreeSet<Entity>,
     current_base : usize
 }
 
@@ -21,10 +24,10 @@ pub fn setup_players(
     player_order : &mut PlayerOrder
 ) {
     let player_1 = commands.spawn().insert(
-        Player {name : "Robert".to_string(), bases : Vec::new(), current_base: 0}
+        Player {name : "Robert".to_string(), bases : BTreeSet::new(), current_base: 0}
     ).id();
     let player_2 = commands.spawn().insert(
-        Player {name : "James".to_string(), bases : Vec::new(), current_base: 0}
+        Player {name : "James".to_string(), bases : BTreeSet::new(), current_base: 0}
     ).id();
     player_order.order.push(player_1);
     player_order.order.push(player_2);
@@ -37,7 +40,23 @@ fn base_owned(
 ) {
     for (base, owner) in ownership_added.iter() {
         if let Ok(mut player) = player_query.get_mut(owner.entity) {
-            player.bases.push(base);
+            player.bases.insert(base);
+        }
+    }
+}
+
+fn base_lost(
+    mut events : EventReader<BaseDestroyed>,
+    mut player_query : Query<&mut Player>,
+    mut exit: EventWriter<AppExit>
+) {
+    for event in events.iter() {
+        for mut player in player_query.iter_mut() {
+            player.bases.remove(&event.base);
+            if player.bases.is_empty() {
+                // GameOver
+                exit.send(AppExit);
+            }
         }
     }
 }
@@ -58,7 +77,8 @@ fn next_turn(
         if player.current_base >= player.bases.len() {
             player.current_base = 0;
         }
-        events_start.send(TurnStart{ new_base : player.bases[player.current_base] });
+        let next_base = *player.bases.iter().nth(player.current_base).unwrap();
+        events_start.send(TurnStart{ new_base :  next_base});
     }
 }
 
@@ -68,6 +88,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<PlayerOrder>()
            .add_system(base_owned.system())
+           .add_system(base_lost.system())
            .add_system(next_turn.system());
     }
 }

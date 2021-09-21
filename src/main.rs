@@ -9,13 +9,15 @@ pub mod weapon;
 pub mod turn;
 pub mod aiming;
 pub mod player;
+pub mod explosion;
 
 use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
-use base::{add_base};
-use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, Explode};
+use base::{add_base, BasePlugin};
+use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, WeaponExplode};
 use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
 use aiming::AimingPlugin;
 use player::{setup_players, PlayerOrder, PlayerPlugin};
+use explosion::ExplosionPlugin;
 
 
 fn setup(
@@ -98,12 +100,12 @@ fn gravity_system(
 fn rocket_asteroid_collide_system(
     rocket_query : Query<(Entity, &Weapon, &GlobalTransform)>,
     asteroid_query : Query<(&Asteroid, &GlobalTransform)>,
-    mut events: EventWriter<Explode>
+    mut events: EventWriter<WeaponExplode>
 ) {
     for (entity, rocket, rocket_transform) in rocket_query.iter() {
         for (asteroid, asteroid_transform) in asteroid_query.iter() {
             if rocket.bound(rocket_transform).collide(asteroid.bound(asteroid_transform)) {
-                events.send(Explode { entity : entity})
+                events.send(WeaponExplode { entity : entity })
             }
         }
     }
@@ -117,6 +119,8 @@ fn main() {
                 .add_plugin(WeaponPlugin)
                 .add_plugin(TurnPlugin)
                 .add_plugin(AimingPlugin)
+                .add_plugin(ExplosionPlugin)
+                .add_plugin(BasePlugin)
                 .add_startup_system(setup.system())
                 .add_system(firing_system.system())
                 .add_system(gravity_system.system())

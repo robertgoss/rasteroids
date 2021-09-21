@@ -29,7 +29,7 @@ Stages Of development before LAN party
     + ~Only fire in firing phase~
     + ~~End turn~~
     + ~~Switch turns~~
-    + UI player order - current player
+    + UI player order - current player highlight
 + Damage
   + Bases
     + Display health
@@ -42,6 +42,8 @@ Stages Of development before LAN party
   + Start menu (Single button)
 
 ## Parity
++ UI
+  + Tracer simulate at fixed distances not as firing beads.
 + Effects
   + Particle effects for rocket trail
   + Particle effect for explosion
