@@ -32,12 +32,12 @@ Stages Of development before LAN party
     + UI player order - current player highlight
 + Damage
   + Bases
-    + Display health
+    + ~~Display health~~
     + Display active
     + Add victory condition
-  + Asteroids
-    + Decrease size
-    + Destroy when small
+  + ~~Asteroids~~
+    + ~~Decrease size~~
+    + ~~Destroy when small~~
 + Menu
   + Start menu (Single button)
 

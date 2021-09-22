@@ -51,10 +51,12 @@ fn setup(
     // Bases
     let base_texture_handle = asset_server.load("images/base.png");
     let base_material = materials.add(base_texture_handle.into());
-    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), ast_1, player_1);
-    add_base(&mut commands, 1.0, base_material.clone(), ast_1, player_2);
-    add_base(&mut commands, 2.0, base_material.clone(), ast_2, player_1);
-    add_base(&mut commands, 3.0, base_material.clone(), ast_3, player_2);
+    let health_back = materials.add(Color::rgb(0.15, 0.15, 0.15).into());
+    let health_front = materials.add(Color::rgb(1.0, 0.15, 0.15).into());
+    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), health_back.clone(), health_front.clone(), ast_1, player_1);
+    add_base(&mut commands, 1.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_1, player_2);
+    add_base(&mut commands, 2.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_2, player_1);
+    add_base(&mut commands, 3.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_3, player_2);
     events.send(TurnStart{new_base : base_1});
 }
 

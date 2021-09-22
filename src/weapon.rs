@@ -183,9 +183,9 @@ pub fn weapon_explode(
         if let Ok((weapon, transform)) = weapon_query.get(event.entity) { 
             if weapon.active {
                 events_turn.send(TurnEnd);
+                let pos = transform.translation;
+                events_explosion.send(Explode { pos : Vec2::new(pos.x, pos.y), power : 50.0 } );
             }
-            let pos = transform.translation;
-            events_explosion.send(Explode { pos : Vec2::new(pos.x, pos.y), power : 50.0 } );
             commands.entity(event.entity).despawn_recursive();
         }
     }

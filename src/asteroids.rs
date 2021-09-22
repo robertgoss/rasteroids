@@ -1,12 +1,17 @@
 use bevy::prelude::*;
 
 use super::collide::Circle;
-use super::base::Base;
+use super::base::{Base, BaseDestroyed};
+use super::explosion::Explode;
 
 pub struct AsteroidDrawable;
 pub struct Asteroid{
     pub max_radius : f32,
     pub radius : f32
+}
+
+pub struct AsteroidDestroyed { 
+    pub asteroid : Entity
 }
 
 impl Asteroid {
@@ -65,11 +70,60 @@ pub fn asteroid_changed(
     }
 }
 
+fn damage_asteroid(
+    mut asteroids : Query<(&mut Asteroid, &GlobalTransform, Entity)>,
+    mut events : EventReader<Explode>,
+    mut event_destroy : EventWriter<AsteroidDestroyed>
+) {
+    let max_dist = 20.0;
+    let min_radius = 8.0;
+    for event in events.iter() {
+        let pos = Vec3::new(event.pos.x, event.pos.y, 0.0);
+        for (mut asteroid, transform, entity) in asteroids.iter_mut() {
+            let dist = 1.0_f32.max(transform.translation.distance(pos) - asteroid.radius); // Correct for shell
+            if dist < max_dist {
+                let damage = event.power * (max_dist - dist) / max_dist;
+                if asteroid.radius - damage < min_radius {
+                    event_destroy.send(AsteroidDestroyed {asteroid : entity})
+                } else {
+                    asteroid.radius -= damage;
+                }
+            }
+        }
+    }
+}
+
+fn destroy_asteroid(
+    mut commands : Commands,
+    mut events : EventReader<AsteroidDestroyed>,
+    child_query : Query<&Children, With<Asteroid>>,
+    base_query : Query<Entity, With<Base>>,
+    mut base_destroy : EventWriter<BaseDestroyed>
+) {
+    for event in events.iter() {
+        // Destroy children (send event to bases to let them destroy themselves)
+        if let Ok(children) = child_query.get(event.asteroid) {
+            for child in children.iter() {
+                if base_query.get(*child).is_ok() {
+                    base_destroy.send(BaseDestroyed { base : *child});
+                } else {
+                    commands.entity(*child).despawn_recursive();
+                }
+            }
+        }
+        // Destroy asteroid now children dealt with
+        commands.entity(event.asteroid).despawn();
+    }
+}
+
 // Plugin
 pub struct AsteroidPlugin;
 
 impl Plugin for AsteroidPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_system(asteroid_changed.system());
+        app.add_event::<AsteroidDestroyed>()
+           .add_system(destroy_asteroid.system())
+           .add_system(damage_asteroid.system())
+           .add_system(asteroid_changed.system());
     }
 }
