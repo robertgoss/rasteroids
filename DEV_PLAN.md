@@ -25,15 +25,15 @@ Stages Of development before LAN party
 + Turns
   + Two fixed players
     + ~~Base ownership~~
-    + Fixed Colours
-    + ~Only fire in firing phase~
+    + ~~Fixed Colours~~
+    + ~~Only fire in firing phase~~
     + ~~End turn~~
     + ~~Switch turns~~
     + UI player order - current player highlight
 + Damage
   + Bases
     + ~~Display health~~
-    + Display active
+    + ~~Display active~~
     + Add victory condition
   + ~~Asteroids~~
     + ~~Decrease size~~

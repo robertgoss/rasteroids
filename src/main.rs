@@ -12,7 +12,7 @@ pub mod player;
 pub mod explosion;
 
 use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
-use base::{add_base, BasePlugin};
+use base::{add_base, BasePlugin, BaseMaterials};
 use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, WeaponExplode};
 use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
 use aiming::AimingPlugin;
@@ -23,7 +23,8 @@ use explosion::ExplosionPlugin;
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut players: ResMut<PlayerOrder>,
+    mut player_order: ResMut<PlayerOrder>,
+    base_materials : Res<BaseMaterials>,
     asset_server: Res<AssetServer>,
     mut events : EventWriter<TurnStart>
 ) {
@@ -38,10 +39,7 @@ fn setup(
         ..Default::default()
     });
     // Players 
-    setup_players(&mut commands, &mut players);
-    // Hardcode for now
-    let player_1 = players.order[0];
-    let player_2 = players.order[1];
+    let players = setup_players(&mut commands, &mut materials, &mut player_order);
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
@@ -49,14 +47,10 @@ fn setup(
     let ast_2 = add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone());
     let ast_3 = add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone());
     // Bases
-    let base_texture_handle = asset_server.load("images/base.png");
-    let base_material = materials.add(base_texture_handle.into());
-    let health_back = materials.add(Color::rgb(0.15, 0.15, 0.15).into());
-    let health_front = materials.add(Color::rgb(1.0, 0.15, 0.15).into());
-    let base_1 = add_base(&mut commands, 0.0, base_material.clone(), health_back.clone(), health_front.clone(), ast_1, player_1);
-    add_base(&mut commands, 1.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_1, player_2);
-    add_base(&mut commands, 2.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_2, player_1);
-    add_base(&mut commands, 3.0, base_material.clone(), health_back.clone(), health_front.clone(),ast_3, player_2);
+    let base_1 = add_base( &mut commands, 0.0, &base_materials, ast_1, player_order.order[0], players[0].colour.clone());
+    add_base( &mut commands, 1.0, &base_materials, ast_1, player_order.order[1], players[1].colour.clone());
+    add_base( &mut commands, 2.0, &base_materials, ast_2, player_order.order[0], players[0].colour.clone());
+    add_base( &mut commands, 3.0, &base_materials, ast_3, player_order.order[1], players[1].colour.clone());
     events.send(TurnStart{new_base : base_1});
 }
 

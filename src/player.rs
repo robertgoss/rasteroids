@@ -13,25 +13,39 @@ pub struct PlayerOrder {
     pub current : usize
 }
 
+#[derive(Clone)]
 pub struct Player {
-    name : String,
+    pub name : String,
     bases : BTreeSet<Entity>,
-    current_base : usize
+    current_base : usize,
+    pub colour : Handle<ColorMaterial>
 }
 
 pub fn setup_players(
     commands : &mut Commands,
+    materials : &mut Assets<ColorMaterial>,
     player_order : &mut PlayerOrder
-) {
-    let player_1 = commands.spawn().insert(
-        Player {name : "Robert".to_string(), bases : BTreeSet::new(), current_base: 0}
-    ).id();
-    let player_2 = commands.spawn().insert(
-        Player {name : "James".to_string(), bases : BTreeSet::new(), current_base: 0}
-    ).id();
+) -> Vec<Player> {
+    let players : Vec<Player> = [
+        Player {
+            name : "James".to_string(), 
+            bases : BTreeSet::new(), 
+            current_base: 0,
+            colour : materials.add(Color::rgb(0.75, 0.15, 0.15).into()),
+        },
+        Player {
+            name : "James".to_string(), 
+            bases : BTreeSet::new(), 
+            current_base: 0,
+            colour : materials.add(Color::rgb(0.15, 0.75, 0.15).into()),
+        }
+    ].to_vec();
+    let player_1 = commands.spawn().insert(players[0].clone() ).id();
+    let player_2 = commands.spawn().insert(players[1].clone() ).id();
     player_order.order.push(player_1);
     player_order.order.push(player_2);
     player_order.current = 0;
+    players
 }
 
 fn base_owned(
