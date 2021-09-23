@@ -12,6 +12,7 @@ pub mod player;
 pub mod explosion;
 pub mod app_state;
 pub mod main_menu;
+pub mod victory_menu;
 
 use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
 use base::{add_base, BasePlugin, BaseMaterials};
@@ -22,6 +23,9 @@ use player::{setup_players, PlayerOrder, PlayerPlugin};
 use explosion::ExplosionPlugin;
 use app_state::AppState;
 use main_menu::MainMenuPlugin;
+use victory_menu::VictoryMenuPlugin;
+
+struct Background;
 
 
 fn setup(
@@ -41,7 +45,7 @@ fn setup(
         material: materials.add(star_map_handle.into()),
         transform: Transform::from_scale(Vec3::new(1.5, 1.5, 1.5)),
         ..Default::default()
-    });
+    }).insert(Background);
     // Players 
     let players = setup_players(&mut commands, &mut materials, &mut player_order);
     // Asteroids
@@ -113,6 +117,14 @@ fn rocket_asteroid_collide_system(
     }
 }
 
+fn teardown_ingame(
+    mut commands : Commands,
+    background_query : Query<Entity, With<Background>>
+) {
+    for background in background_query.iter() {
+        commands.entity(background).despawn_recursive();
+    }
+}
 
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
@@ -129,6 +141,10 @@ fn main() {
                     .with_system(gravity_system.system())
                     .with_system(rocket_asteroid_collide_system.system())
                 )
+                .add_system_set(
+                   SystemSet::on_exit(AppState::InGame)
+                   .with_system(teardown_ingame.system())
+                )
                 .add_plugin(PlayerPlugin)
                 .add_plugin(AsteroidPlugin)
                 .add_plugin(WeaponPlugin)
@@ -136,5 +152,6 @@ fn main() {
                 .add_plugin(AimingPlugin)
                 .add_plugin(ExplosionPlugin)
                 .add_plugin(BasePlugin)
+                .add_plugin(VictoryMenuPlugin)
                 .run();
 }

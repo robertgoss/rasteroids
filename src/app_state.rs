@@ -2,5 +2,5 @@
 pub enum AppState {
     MainMenu,
     InGame,
-    Paused,
+    VictoryMenu,
 }

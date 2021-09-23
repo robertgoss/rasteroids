@@ -169,6 +169,15 @@ fn base_new_turn(
     }
 }
 
+fn teardown_bases(
+    mut commands : Commands,
+    base_query : Query<Entity, With<Base>>
+) {
+    for base in base_query.iter() {
+        commands.entity(base).despawn_recursive();
+    }
+}
+
 pub struct BasePlugin;
 
 impl Plugin for BasePlugin {
@@ -182,6 +191,10 @@ impl Plugin for BasePlugin {
               .with_system(base_activity_changed.system())
               .with_system(damage_base.system())
               .with_system(destroy_base.system())
+            )
+            .add_system_set(
+                SystemSet::on_exit(AppState::InGame)
+                  .with_system(teardown_bases.system())
             );
     }
 }

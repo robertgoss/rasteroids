@@ -192,6 +192,15 @@ pub fn weapon_explode(
     }
 }
 
+fn teardown_weapons(
+    mut commands : Commands,
+    weapon_query : Query<Entity, With<Weapon>>
+) {
+    for weapon in weapon_query.iter() {
+        commands.entity(weapon).despawn_recursive();
+    }
+}
+
 // Plugins
 pub struct WeaponPlugin;
 
@@ -205,7 +214,10 @@ impl Plugin for WeaponPlugin {
                .with_system(launching_system.system())
                .with_system(weapon_move_update.system())
                .with_system(weapon_fuel_update.system())
-               .with_system(weapon_explode.system())
-           );
+               .with_system(weapon_explode.system()))
+           .add_system_set(
+              SystemSet::on_exit(AppState::InGame)
+               .with_system(teardown_weapons.system())
+            );
     }
 }

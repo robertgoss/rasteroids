@@ -1,12 +1,11 @@
 use bevy::prelude::*;
-use bevy::app::AppExit;
 
 use std::collections::BTreeSet;
 
 use super::base::{BaseOwner,BaseDestroyed};
 use super::turn::{TurnStart, TurnEnd};
 use super::app_state::AppState;
-
+use super::victory_menu::Victory;
 
 #[derive(Default)]
 pub struct PlayerOrder {
@@ -63,15 +62,22 @@ fn base_owned(
 fn base_lost(
     mut events : EventReader<BaseDestroyed>,
     mut player_query : Query<&mut Player>,
-    mut exit: EventWriter<AppExit>
+    mut victory : ResMut<Victory>,
+    mut state: ResMut<State<AppState>>
 ) {
     for event in events.iter() {
         for mut player in player_query.iter_mut() {
             player.bases.remove(&event.base);
-            if player.bases.is_empty() {
-                // GameOver
-                exit.send(AppExit);
-            }
+        }
+        let active_count = player_query.iter_mut().filter(
+            |player| !player.bases.is_empty()
+        ).count();
+        if active_count <= 1 {
+            victory.player = player_query.iter_mut().filter(
+                |player| !player.bases.is_empty()
+            ).map(|p| p.clone()
+            ).next();
+            state.set(AppState::VictoryMenu).unwrap();
         }
     }
 }
@@ -97,6 +103,17 @@ fn next_turn(
     }
 }
 
+fn teardown_players(
+    mut commands : Commands,
+    player_query : Query<Entity, With<Player>>,
+    mut player_order : ResMut<PlayerOrder>
+) {
+    for player in player_query.iter() {
+        commands.entity(player).despawn_recursive();
+    }
+    player_order.order.clear();
+}
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -107,6 +124,10 @@ impl Plugin for PlayerPlugin {
                 .with_system(base_owned.system())
                 .with_system(base_lost.system())
                 .with_system(next_turn.system())
+              )
+           .add_system_set(
+              SystemSet::on_exit(AppState::InGame)
+               .with_system(teardown_players.system())
            );
     }
 }

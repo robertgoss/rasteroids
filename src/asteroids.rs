@@ -73,7 +73,6 @@ pub fn asteroid_changed(
                 }
             }
         }
-        println!("Changed");
     }
 }
 
@@ -123,6 +122,15 @@ fn destroy_asteroid(
     }
 }
 
+fn teardown_asteroids(
+    mut commands : Commands,
+    asteroids_query : Query<Entity, With<Asteroid>>
+) {
+    for asteroids in asteroids_query.iter() {
+        commands.entity(asteroids).despawn_recursive();
+    }
+}
+
 // Plugin
 pub struct AsteroidPlugin;
 
@@ -134,6 +142,11 @@ impl Plugin for AsteroidPlugin {
                 .with_system(destroy_asteroid.system())
                 .with_system(damage_asteroid.system())
                 .with_system(asteroid_changed.system())
-            );
+              )
+           .add_system_set(
+             SystemSet::on_exit(AppState::InGame)
+               .with_system(teardown_asteroids.system())
+           );
+
     }
 }
