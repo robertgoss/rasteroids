@@ -3,8 +3,11 @@ use bevy::prelude::*;
 use super::collide::Circle;
 use super::base::{Base, BaseDestroyed};
 use super::explosion::Explode;
+use super::app_state::AppState;
 
 pub struct AsteroidDrawable;
+
+#[derive(Clone)]
 pub struct Asteroid{
     pub max_radius : f32,
     pub radius : f32
@@ -21,12 +24,13 @@ impl Asteroid {
     }
 }
 
-pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> Entity {
+pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> (Entity, Asteroid) {
     let max_radius = 100.0;
-    commands.spawn().insert(Asteroid{
+    let asteroid = Asteroid{
         max_radius : 100.0,
         radius : 50.0
-    }).insert(Transform::from_xyz(x, y, 0.0)
+    };
+    let id = commands.spawn().insert(asteroid.clone()).insert(Transform::from_xyz(x, y, 0.0)
     ).insert(GlobalTransform::from_xyz(x, y, 0.0)
     ).with_children(
         |parent| {
@@ -37,7 +41,8 @@ pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<
                 ..Default::default()
             }).insert(AsteroidDrawable);
         }
-    ).id()
+    ).id();
+    (id, asteroid)
 }
 
 // If an asteroid's radius changes we want to update it's sprite and reposition bases on the surface
@@ -57,6 +62,7 @@ pub fn asteroid_changed(
                     let angle = base.angle;
                     let radius = asteroid.radius - base.offset;
                     transform.translation = Vec3::new(-radius * angle.sin(), radius * angle.cos(), 0.0);
+                    println!("base moved");
                 }
             } 
             // Asteroid drawable children need to be scales to new size
@@ -67,6 +73,7 @@ pub fn asteroid_changed(
                 }
             }
         }
+        println!("Changed");
     }
 }
 
@@ -122,8 +129,11 @@ pub struct AsteroidPlugin;
 impl Plugin for AsteroidPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_event::<AsteroidDestroyed>()
-           .add_system(destroy_asteroid.system())
-           .add_system(damage_asteroid.system())
-           .add_system(asteroid_changed.system());
+           .add_system_set(
+              SystemSet::on_update(AppState::InGame)
+                .with_system(destroy_asteroid.system())
+                .with_system(damage_asteroid.system())
+                .with_system(asteroid_changed.system())
+            );
     }
 }

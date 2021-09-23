@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use super::app_state::AppState;
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum TurnPhase {
     Aiming, 
@@ -60,7 +62,10 @@ impl Plugin for TurnPlugin {
            .add_event::<TurnEnd>()
            .add_event::<TurnFiring>()
            .init_resource::<TurnState>()
-           .add_system(turn_starter.system())
-           .add_system(turn_firing_phase_start.system());
+           .add_system_set(
+              SystemSet::on_update(AppState::InGame)
+                .with_system(turn_starter.system())
+                .with_system(turn_firing_phase_start.system())
+            );
     }
 }

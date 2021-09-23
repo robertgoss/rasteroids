@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
-use crate::turn::TurnStart;
-
+use super::turn::TurnStart;
 use super::explosion::Explode;
+use super::app_state::AppState;
+use super::asteroids::Asteroid;
+
 pub struct Base {
     pub angle : f32,
     pub offset : f32,
@@ -50,7 +52,7 @@ pub struct PercentBar {
 pub fn add_base(
     commands: &mut Commands, angle : f32, 
     materials : &BaseMaterials,
-    asteroid : Entity, 
+    asteroid : &(Entity, Asteroid), 
     player : Entity,
     player_colour : Handle<ColorMaterial>
 ) -> Entity {
@@ -61,17 +63,25 @@ pub fn add_base(
         ..Default::default()
     }).insert(PercentBar { val : 1.0, size : 45.0}).id();
 
+    let offset = -8.5;
+    let radius = asteroid.1.radius - offset;
+    let pos = Vec3::new(-radius * angle.sin(), radius * angle.cos(), 0.0);
+
     let base = commands.spawn_bundle(SpriteBundle {
         material: materials.base.clone(),
-        transform: Transform::from_rotation(Quat::from_rotation_z(angle)),
+        transform: Transform {
+            rotation : Quat::from_rotation_z(angle),
+            translation : pos,
+            scale : Vec3::new(1.0, 1.0, 1.0)
+        },
         sprite: Sprite::new(Vec2::new(50.0, 50.0)),
         ..Default::default()
     }).insert(Base{
         angle : angle,
-        offset : -8.5,
+        offset : offset,
         health : 100.0,
         health_bar : health_bar
-    }).insert(Parent(asteroid)
+    }).insert(Parent(asteroid.0)
     ).insert(BaseOwner{entity : player}
     ).insert(BaseActivity{ active : false }
     ).with_children(|base_builder| {
@@ -165,10 +175,13 @@ impl Plugin for BasePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_event::<BaseDestroyed>()
            .init_resource::<BaseMaterials>()
-           .add_system(percent_update.system())
-           .add_system(base_new_turn.system())
-           .add_system(base_activity_changed.system())
-           .add_system(damage_base.system())
-           .add_system(destroy_base.system());
+           .add_system_set(
+            SystemSet::on_update(AppState::InGame)
+              .with_system(percent_update.system())
+              .with_system(base_new_turn.system())
+              .with_system(base_activity_changed.system())
+              .with_system(damage_base.system())
+              .with_system(destroy_base.system())
+            );
     }
 }

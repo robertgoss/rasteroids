@@ -10,6 +10,8 @@ pub mod turn;
 pub mod aiming;
 pub mod player;
 pub mod explosion;
+pub mod app_state;
+pub mod main_menu;
 
 use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
 use base::{add_base, BasePlugin, BaseMaterials};
@@ -18,6 +20,8 @@ use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
 use aiming::AimingPlugin;
 use player::{setup_players, PlayerOrder, PlayerPlugin};
 use explosion::ExplosionPlugin;
+use app_state::AppState;
+use main_menu::MainMenuPlugin;
 
 
 fn setup(
@@ -43,14 +47,16 @@ fn setup(
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
-    let ast_1 = add_asteroid(&mut commands, 0.0, -215.0, asteroid_material.clone());
-    let ast_2 = add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone());
-    let ast_3 = add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone());
+    let asteroids = vec!( 
+      add_asteroid(&mut commands, 0.0, -215.0, asteroid_material.clone()),
+      add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone()),
+      add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone())
+    );
     // Bases
-    let base_1 = add_base( &mut commands, 0.0, &base_materials, ast_1, player_order.order[0], players[0].colour.clone());
-    add_base( &mut commands, 1.0, &base_materials, ast_1, player_order.order[1], players[1].colour.clone());
-    add_base( &mut commands, 2.0, &base_materials, ast_2, player_order.order[0], players[0].colour.clone());
-    add_base( &mut commands, 3.0, &base_materials, ast_3, player_order.order[1], players[1].colour.clone());
+    let base_1 = add_base( &mut commands, 0.0, &base_materials, &asteroids[0], player_order.order[0], players[0].colour.clone());
+    add_base( &mut commands, 1.0, &base_materials, &asteroids[0], player_order.order[1], players[1].colour.clone());
+    add_base( &mut commands, 2.0, &base_materials, &asteroids[1], player_order.order[0], players[0].colour.clone());
+    add_base( &mut commands, 3.0, &base_materials, &asteroids[2], player_order.order[1], players[1].colour.clone());
     events.send(TurnStart{new_base : base_1});
 }
 
@@ -107,9 +113,22 @@ fn rocket_asteroid_collide_system(
     }
 }
 
+
 fn main() {
     App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
                 .add_plugins(DefaultPlugins)
+                .add_state(AppState::MainMenu)
+                .add_plugin(MainMenuPlugin)
+                .add_system_set(
+                    SystemSet::on_enter(AppState::InGame)
+                    .with_system(setup.system())
+                )
+                .add_system_set(
+                    SystemSet::on_update(AppState::InGame)
+                    .with_system(firing_system.system())
+                    .with_system(gravity_system.system())
+                    .with_system(rocket_asteroid_collide_system.system())
+                )
                 .add_plugin(PlayerPlugin)
                 .add_plugin(AsteroidPlugin)
                 .add_plugin(WeaponPlugin)
@@ -117,9 +136,5 @@ fn main() {
                 .add_plugin(AimingPlugin)
                 .add_plugin(ExplosionPlugin)
                 .add_plugin(BasePlugin)
-                .add_startup_system(setup.system())
-                .add_system(firing_system.system())
-                .add_system(gravity_system.system())
-                .add_system(rocket_asteroid_collide_system.system())
                 .run();
 }

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::turn::{TurnPhase, TurnState, TurnStart, TurnFiring};
 use super::weapon::{Launch, WeaponType, WeaponTracer};
+use super::app_state::AppState;
 
 // Components
 struct AimingTracerTimer;
@@ -95,9 +96,12 @@ pub struct AimingPlugin;
 
 impl Plugin for AimingPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_system(aiming_system.system())
-           .add_system(aiming_ui_aiming_start.system())
-           .add_system(aiming_ui_aiming_end.system())
-           .add_system(aiming_ui_timer_system.system());
+        app.add_system_set(
+            SystemSet::on_update(AppState::InGame)
+              .with_system(aiming_system.system())
+              .with_system(aiming_ui_aiming_start.system())
+              .with_system(aiming_ui_aiming_end.system())
+              .with_system(aiming_ui_timer_system.system())
+        );
     }
 }

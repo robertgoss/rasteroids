@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 
 use super::base::{BaseOwner,BaseDestroyed};
 use super::turn::{TurnStart, TurnEnd};
+use super::app_state::AppState;
 
 
 #[derive(Default)]
@@ -101,8 +102,11 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<PlayerOrder>()
-           .add_system(base_owned.system())
-           .add_system(base_lost.system())
-           .add_system(next_turn.system());
+           .add_system_set(
+              SystemSet::on_update(AppState::InGame)
+                .with_system(base_owned.system())
+                .with_system(base_lost.system())
+                .with_system(next_turn.system())
+           );
     }
 }

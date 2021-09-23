@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::collide::Box;
 use super::turn::TurnEnd;
 use super::explosion::Explode;
+use super::app_state::AppState;
 
 // Components
 
@@ -199,9 +200,12 @@ impl Plugin for WeaponPlugin {
         app.add_event::<Launch>()
            .add_event::<WeaponExplode>()
            .init_resource::<WeaponMaterials>()
-           .add_system(launching_system.system())
-           .add_system(weapon_move_update.system())
-           .add_system(weapon_fuel_update.system())
-           .add_system(weapon_explode.system());
+           .add_system_set(
+             SystemSet::on_update(AppState::InGame)
+               .with_system(launching_system.system())
+               .with_system(weapon_move_update.system())
+               .with_system(weapon_fuel_update.system())
+               .with_system(weapon_explode.system())
+           );
     }
 }
