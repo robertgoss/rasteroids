@@ -47,7 +47,12 @@ fn setup(
         ..Default::default()
     }).insert(Background);
     // Players 
-    let players = setup_players(&mut commands, &mut materials, &mut player_order);
+    let players = setup_players(
+        &mut commands,
+        &mut materials, 
+        &mut player_order,
+        asset_server.load("fonts/FiraSans-Bold.ttf")
+    );
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
     let asteroid_material = materials.add(asteroid_texture_handle.into());
@@ -57,10 +62,13 @@ fn setup(
       add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone())
     );
     // Bases
-    let base_1 = add_base( &mut commands, 0.0, &base_materials, &asteroids[0], player_order.order[0], players[0].colour.clone());
-    add_base( &mut commands, 1.0, &base_materials, &asteroids[0], player_order.order[1], players[1].colour.clone());
-    add_base( &mut commands, 2.0, &base_materials, &asteroids[1], player_order.order[0], players[0].colour.clone());
-    add_base( &mut commands, 3.0, &base_materials, &asteroids[2], player_order.order[1], players[1].colour.clone());
+    let colours :Vec<Handle<ColorMaterial>> = players.iter().map(
+        |player| materials.add(player.colour.into())
+    ).collect();
+    let base_1 = add_base( &mut commands, 0.0, &base_materials, &asteroids[0], player_order.order[0], colours[0].clone());
+    add_base( &mut commands, 1.0, &base_materials, &asteroids[0], player_order.order[1], colours[1].clone());
+    add_base( &mut commands, 2.0, &base_materials, &asteroids[1], player_order.order[0], colours[0].clone());
+    add_base( &mut commands, 3.0, &base_materials, &asteroids[2], player_order.order[1], colours[1].clone());
     events.send(TurnStart{new_base : base_1});
 }
 

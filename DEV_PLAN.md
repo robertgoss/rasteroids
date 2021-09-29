@@ -39,7 +39,7 @@ Stages Of development before LAN party
     + ~~Decrease size~~
     + ~~Destroy when small~~
 + Menu
-  + Start menu (Single button)
+  + ~~Start menu (Single button)~~
 
 ## Parity
 + UI

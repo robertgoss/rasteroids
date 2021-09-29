@@ -18,26 +18,27 @@ pub struct Player {
     pub name : String,
     bases : BTreeSet<Entity>,
     current_base : usize,
-    pub colour : Handle<ColorMaterial>
+    pub colour : Color
 }
 
 pub fn setup_players(
     commands : &mut Commands,
     materials : &mut Assets<ColorMaterial>,
-    player_order : &mut PlayerOrder
+    player_order : &mut PlayerOrder,
+    font : Handle<Font>
 ) -> Vec<Player> {
     let players : Vec<Player> = [
         Player {
-            name : "James".to_string(), 
+            name : "Robert".to_string(), 
             bases : BTreeSet::new(), 
             current_base: 0,
-            colour : materials.add(Color::rgb(0.75, 0.15, 0.15).into()),
+            colour : Color::rgb(0.75, 0.15, 0.15).into(),
         },
         Player {
             name : "James".to_string(), 
             bases : BTreeSet::new(), 
             current_base: 0,
-            colour : materials.add(Color::rgb(0.15, 0.75, 0.15).into()),
+            colour : Color::rgb(0.15, 0.75, 0.15).into(),
         }
     ].to_vec();
     let player_1 = commands.spawn().insert(players[0].clone() ).id();
@@ -45,7 +46,50 @@ pub fn setup_players(
     player_order.order.push(player_1);
     player_order.order.push(player_2);
     player_order.current = 0;
+
+    setup_player_ui(commands, materials, &players, font);
+
     players
+}
+
+fn setup_player_ui (
+    commands : &mut Commands,
+    materials : &mut Assets<ColorMaterial>,
+    players : &Vec<Player>,
+    font : Handle<Font>
+) {
+    commands.spawn_bundle(NodeBundle {
+        style: Style {
+            size: Size::new(Val::Px(200.0), Val::Auto),
+            flex_direction : FlexDirection::Column,
+            position_type: PositionType::Absolute,
+            position: Rect {
+                right: Val::Px(20.0),
+                top: Val::Px(20.0),
+                ..Default::default()
+            },
+            border: Rect::all(Val::Px(10.0)),
+            ..Default::default()
+        },
+        material: materials.add(Color::rgba(0.4, 0.4, 0.4, 0.8).into()),
+        ..Default::default()
+    })
+    .with_children(|parent| {
+        for player in players {
+            parent.spawn_bundle(TextBundle {
+                text: Text::with_section(
+                    player.name.clone(),
+                    TextStyle {
+                        font: font.clone(),
+                        font_size: 40.0,
+                        color: player.colour,
+                    },
+                    Default::default(),
+                ),
+                ..Default::default()
+            });
+        }
+    });
 }
 
 fn base_owned(
