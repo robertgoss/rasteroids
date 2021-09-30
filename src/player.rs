@@ -52,6 +52,10 @@ pub fn setup_players(
     players
 }
 
+struct PlayerUI {
+    index : usize
+}
+
 fn setup_player_ui (
     commands : &mut Commands,
     materials : &mut Assets<ColorMaterial>,
@@ -75,7 +79,7 @@ fn setup_player_ui (
         ..Default::default()
     })
     .with_children(|parent| {
-        for player in players {
+        for (index,player) in players.iter().enumerate() {
             parent.spawn_bundle(TextBundle {
                 text: Text::with_section(
                     player.name.clone(),
@@ -87,9 +91,24 @@ fn setup_player_ui (
                     Default::default(),
                 ),
                 ..Default::default()
-            });
+            }).insert(PlayerUI {index : index} );
         }
     });
+}
+
+fn player_ui_current(
+    mut player_ui_query : Query<(&PlayerUI, &mut Text)>,
+    player_order : Res<PlayerOrder>,
+) {
+    for (player_ui, mut text) in player_ui_query.iter_mut() {
+        if let Some(mut section) = text.sections.first_mut() {
+            if player_ui.index == player_order.current {
+                section.style.font_size = 50.0;
+            } else {
+                section.style.font_size = 35.0;
+            }
+        }
+    }
 }
 
 fn base_owned(
@@ -150,10 +169,14 @@ fn next_turn(
 fn teardown_players(
     mut commands : Commands,
     player_query : Query<Entity, With<Player>>,
+    player_ui_query : Query<Entity, With<PlayerUI>>,
     mut player_order : ResMut<PlayerOrder>
 ) {
     for player in player_query.iter() {
         commands.entity(player).despawn_recursive();
+    }
+    for player_ui in player_ui_query.iter() {
+        commands.entity(player_ui).despawn_recursive();
     }
     player_order.order.clear();
 }
@@ -168,6 +191,7 @@ impl Plugin for PlayerPlugin {
                 .with_system(base_owned.system())
                 .with_system(base_lost.system())
                 .with_system(next_turn.system())
+                .with_system(player_ui_current.system())
               )
            .add_system_set(
               SystemSet::on_exit(AppState::InGame)
