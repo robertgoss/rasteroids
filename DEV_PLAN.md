@@ -1,6 +1,6 @@
 Stages Of development before LAN party
 
-## MVP
+## ~~MVP~~
 + ~~Basic compile~~
   + ~~Repo~~
   + ~~Bevy~~
@@ -29,7 +29,7 @@ Stages Of development before LAN party
     + ~~Only fire in firing phase~~
     + ~~End turn~~
     + ~~Switch turns~~
-    + UI player order - current player highlight
+    + ~~UI player order - current player highlight~~
 + Damage
   + Bases
     + ~~Display health~~
