@@ -14,7 +14,7 @@ pub mod app_state;
 pub mod main_menu;
 pub mod victory_menu;
 
-use asteroids::{add_asteroid, AsteroidPlugin, Asteroid};
+use asteroids::{calculate_gravity, add_asteroid, AsteroidPlugin, Asteroid};
 use base::{add_base, BasePlugin, BaseMaterials};
 use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, WeaponExplode};
 use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
@@ -96,18 +96,13 @@ fn firing_system(
 
 fn gravity_system(
     mut rocket_query : Query<(&mut Weapon, &GlobalTransform)>,
-    asteroid_query : Query<(&Asteroid, &GlobalTransform)>
+    asteroid_query : Query<(&Asteroid, &GlobalTransform)>,
+    time : Res<Time>
 ) {
     for (mut rocket, rocket_transform) in rocket_query.iter_mut() {
-        for (asteroid, asteroid_transform) in asteroid_query.iter() {
-            let delta3 = rocket_transform.translation - asteroid_transform.translation;
-            let delta = Vec2::new(delta3.x, delta3.y);
-            if delta.length() > 1.0 {
-                let mass = 3.0 * asteroid.radius * asteroid.radius;
-                let dist_sq = delta.length_squared();
-                rocket.thrust -= (mass / dist_sq) * delta.normalize();
-            }
-        }
+        let rocket_pos = rocket_transform.translation;
+        let pos = Vec2::new(rocket_pos.x, rocket_pos.y);
+        rocket.thrust +=  calculate_gravity(&asteroid_query, pos, time.delta_seconds());
     }
 }
 

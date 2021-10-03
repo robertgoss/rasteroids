@@ -76,6 +76,24 @@ pub fn asteroid_changed(
     }
 }
 
+pub fn calculate_gravity(
+    asteroid_query : &Query<(&Asteroid, &GlobalTransform)>,
+    position : Vec2,
+    delta_seconds : f32
+) -> Vec2 {
+    let mut force = Vec2::ZERO;
+    for (asteroid, asteroid_transform) in asteroid_query.iter() {
+        let asteroid_pos = asteroid_transform.translation;
+        let delta = position - Vec2::new(asteroid_pos.x, asteroid_pos.y);
+        if delta.length() > 1.0 {
+            let mass = delta_seconds * 150.0 * asteroid.radius * asteroid.radius;
+            let dist_sq = delta.length_squared();
+            force -= (mass / dist_sq) * delta.normalize();
+        }
+    }
+    return force;
+}
+
 fn damage_asteroid(
     mut asteroids : Query<(&mut Asteroid, &GlobalTransform, Entity)>,
     mut events : EventReader<Explode>,

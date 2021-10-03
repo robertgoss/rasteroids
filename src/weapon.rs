@@ -10,33 +10,25 @@ use super::app_state::AppState;
 pub struct Weapon {
     pub thrust : Vec2,
     pub fuel : f32,
-    pub size : Vec2,
-    pub active : bool
+    pub size : Vec2
 }
 
-pub struct WeaponTracer;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum WeaponType {
-    Rocket,
-    Tracer
+    Rocket
 }
 
 impl WeaponType {
     fn size(self : &Self) -> Vec2 {
         match *self {
             WeaponType::Rocket => Vec2::new(12.0, 36.0),
-            WeaponType::Tracer => Vec2::new(6.0, 6.0)
         }
     }
     fn fuel(self : &Self) -> f32 {
         match *self {
-            WeaponType::Rocket => 10.0,
-            WeaponType::Tracer => 1.2
+            WeaponType::Rocket => 10.0
         }
-    }
-    fn is_active(self : &Self) -> bool {
-        *self != WeaponType::Tracer
     }
 }
 
@@ -63,15 +55,13 @@ pub struct WeaponExplode {
 
 // Resourses 
 pub struct WeaponMaterials {
-    rocket : Handle<ColorMaterial>,
-    tracer : Handle<ColorMaterial>
+    rocket : Handle<ColorMaterial>
 }
 
 impl WeaponMaterials {
     pub fn material(self : &Self, weapon_type : WeaponType) -> Handle<ColorMaterial> {
         match weapon_type {
-            WeaponType::Rocket => self.rocket.clone(),
-            WeaponType::Tracer => self.tracer.clone()
+            WeaponType::Rocket => self.rocket.clone()
         }
     }
 }
@@ -80,11 +70,9 @@ impl FromWorld for WeaponMaterials {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
         let rocket_texture_handle = asset_server.load("images/rocket.png");
-        let tracer_texture_handle = asset_server.load("images/missile_target_2.png");
         let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
         WeaponMaterials {
-            rocket : materials.add(rocket_texture_handle.into()),
-            tracer : materials.add(tracer_texture_handle.into())
+            rocket : materials.add(rocket_texture_handle.into())
         }
     }
 }
@@ -100,9 +88,7 @@ pub fn weapon_fuel_update(
     for (entity, mut weapon) in weapon_query.iter_mut() {
         weapon.fuel -= time.delta_seconds();
         if weapon.fuel < 0.0 {
-            if weapon.active {
-                events_turn.send(TurnEnd);
-            }
+            events_turn.send(TurnEnd);
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -132,8 +118,7 @@ fn launch_weapon(
         Weapon{ 
             thrust : thrust, 
             fuel : launch.weapon_type.fuel(), 
-            size : size,
-            active : launch.weapon_type.is_active()
+            size : size
         }
     ).id()
 }
@@ -146,15 +131,12 @@ pub fn launching_system(
 ) {
     for launch_event in events.iter() {
         if let Ok(parent_transform) = transform_query.get(launch_event.parent) { 
-            let weapon_entity = launch_weapon(
+            launch_weapon(
                 &mut commands, 
                 parent_transform, 
                 &materials, 
                 launch_event
             );
-            if launch_event.weapon_type == WeaponType::Tracer {
-                commands.entity(weapon_entity).insert(WeaponTracer);
-            }
         }
     }
 }
@@ -176,17 +158,15 @@ pub fn weapon_move_update(
 pub fn weapon_explode(
     mut events: EventReader<WeaponExplode>,
     mut commands: Commands,
-    weapon_query : Query<(&Weapon, &GlobalTransform)>,
+    weapon_query : Query<&GlobalTransform>,
     mut events_turn : EventWriter<TurnEnd>,
     mut events_explosion : EventWriter<Explode>
 ) {
     for event in events.iter() {
-        if let Ok((weapon, transform)) = weapon_query.get(event.entity) { 
-            if weapon.active {
-                events_turn.send(TurnEnd);
-                let pos = transform.translation;
-                events_explosion.send(Explode { pos : Vec2::new(pos.x, pos.y), power : 50.0 } );
-            }
+        if let Ok(transform) = weapon_query.get(event.entity) { 
+            events_turn.send(TurnEnd);
+            let pos = transform.translation;
+            events_explosion.send(Explode { pos : Vec2::new(pos.x, pos.y), power : 50.0 } );
             commands.entity(event.entity).despawn_recursive();
         }
     }

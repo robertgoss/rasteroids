@@ -42,13 +42,24 @@ Stages Of development before LAN party
   + ~~Start menu (Single button)~~
 
 ## Parity
-+ UI
-  + Tracer simulate at fixed distances not as firing beads.
++ UI Aiming
+  + ~~Tracer simulate at fixed distances not as firing beads.~~
+  + Crosshairs
+
++ UI improvement
+  + Proper win screen
+  + Tighten placement of player names
+  + Use icon / highlight to show activity
+  + 
 + Effects
   + Particle effects for rocket trail
   + Particle effect for explosion
   + Sound effect for rocket and explosion
 + Inventory
+  + UI placeholder
+  + Amounts 
+  + Selection
+  + Usage - Grey out unavailable.
 + Rocket Weapon types
   + Multi rocket
   + Homing Rocket
