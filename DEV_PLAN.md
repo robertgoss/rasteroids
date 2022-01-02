@@ -1,45 +1,7 @@
 Stages Of development before LAN party
 
 ## ~~MVP~~
-+ ~~Basic compile~~
-  + ~~Repo~~
-  + ~~Bevy~~
-  + ~~Window~~
-+ ~~Rendering~~
-  + ~~Asteroids (Fixed)~~
-  + ~~Bases (Fixed)~~
-  + ~~System to update bases to edge of asteroid~~
-  + ~~Background~~
-+ ~~Firing~~
-  + ~~Rocket~~
-    + ~~Basic movement~~
-    + ~~Start base~~
-    + ~~Gravity~~
-    + ~~Lifetime~~
-    + ~~Collisions~~
-  + ~~UI~~ 
-    + ~~Mouse click~~
-    + ~~Direction~~
-    + ~~Magnitude~~
-    + ~~Tracer~~
-+ ~~Turns~~
-  + ~~Two fixed players~~
-    + ~~Base ownership~~
-    + ~~Fixed Colours~~
-    + ~~Only fire in firing phase~~
-    + ~~End turn~~
-    + ~~Switch turns~~
-    + ~~UI player order - current player highlight~~
-+ ~~Damage~~
-  + ~~Bases~~
-    + ~~Display health~~
-    + ~~Display active~~
-    + Add victory condition
-  + ~~Asteroids~~
-    + ~~Decrease size~~
-    + ~~Destroy when small~~
-+ ~~Menu~~
-  + ~~Start menu (Single button)~~
++ See history
 
 ## Parity
 + UI Aiming
