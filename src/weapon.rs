@@ -7,6 +7,7 @@ use super::app_state::AppState;
 
 // Components
 
+#[derive(Component)]
 pub struct Weapon {
     pub thrust : Vec2,
     pub fuel : f32,
@@ -55,11 +56,11 @@ pub struct WeaponExplode {
 
 // Resourses 
 pub struct WeaponMaterials {
-    rocket : Handle<ColorMaterial>
+    rocket : Handle<Image>
 }
 
 impl WeaponMaterials {
-    pub fn material(self : &Self, weapon_type : WeaponType) -> Handle<ColorMaterial> {
+    pub fn texture(self : &Self, weapon_type : WeaponType) -> Handle<Image> {
         match weapon_type {
             WeaponType::Rocket => self.rocket.clone()
         }
@@ -70,9 +71,8 @@ impl FromWorld for WeaponMaterials {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
         let rocket_texture_handle = asset_server.load("images/rocket.png");
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
         WeaponMaterials {
-            rocket : materials.add(rocket_texture_handle.into())
+            rocket : rocket_texture_handle
         }
     }
 }
@@ -106,13 +106,13 @@ fn launch_weapon(
     let thrust = Vec2::new(direction.x, direction.y) * launch.thrust;
     let size = launch.weapon_type.size();
     commands.spawn_bundle(SpriteBundle {
-        material: materials.material(launch.weapon_type),
+        texture: materials.texture(launch.weapon_type),
         transform: Transform { 
             translation : parent_transform.translation + offset,
             rotation : rocket_rotation,
             scale : Vec3::new(1.0,1.0,1.0)
         },
-        sprite: Sprite::new(size),
+        sprite: Sprite { custom_size : Some(size), ..Default::default()},
         ..Default::default()
     }).insert(
         Weapon{ 
@@ -185,7 +185,7 @@ fn teardown_weapons(
 pub struct WeaponPlugin;
 
 impl Plugin for WeaponPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_event::<Launch>()
            .add_event::<WeaponExplode>()
            .init_resource::<WeaponMaterials>()

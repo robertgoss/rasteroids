@@ -10,20 +10,20 @@ use super::base::Base;
 // Components
 
 pub struct AimingMaterials {
-    tracer : Handle<ColorMaterial>
+    tracer : Handle<Image>
 }
 
 impl FromWorld for AimingMaterials {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
         let tracer_texture_handle = asset_server.load("images/missile_target_2.png");
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
         AimingMaterials {
-            tracer : materials.add(tracer_texture_handle.into())
+            tracer : tracer_texture_handle
         }
     }
 }
 
+#[derive(Component)]
 pub struct AimingTracer {
     delay : f32
 }
@@ -66,15 +66,15 @@ fn aiming_system(
 fn aiming_ui_aiming_start(
     mut commands: Commands,
     mut events : EventReader<TurnStart>,
-    materials : Res<AimingMaterials>
+    textures : Res<AimingMaterials>
 ) {
     for _ in events.iter() {
         commands.spawn().insert(Timer::from_seconds(0.15, true));
         let size = Vec2::new(6.0, 6.0);
         for i in 1..6 {
             commands.spawn_bundle(SpriteBundle {
-                material: materials.tracer.clone(),
-                sprite: Sprite::new(size),
+                texture: textures.tracer.clone(),
+                sprite: Sprite { custom_size : Some(size), ..Default::default() },
                 ..Default::default()
             }).insert(AimingTracer {delay : (i as f32) * 0.3});
         }
@@ -102,9 +102,9 @@ fn aiming_ui_update_system(
     turn_state : Res<TurnState>,
     tracer_query : Query<(Entity, &AimingTracer)>,
     mut query : QuerySet<(
-        Query<&GlobalTransform, With<Base>>,
-        Query<(Entity, &mut GlobalTransform), With<AimingTracer>>,
-        Query<(&Asteroid, &GlobalTransform)>
+        QueryState<&GlobalTransform, With<Base>>,
+        QueryState<(Entity, &mut GlobalTransform), With<AimingTracer>>,
+        QueryState<(&Asteroid, &GlobalTransform)>
     )>
 ) {
     if let Some(base) = turn_state.active_base {
@@ -123,7 +123,7 @@ fn aiming_ui_update_system(
                 let position = calculate_position(&query.q2(), base_pos, trace.delay, thrust);
                 positions.insert(entity, position);
             }
-            for (entity, mut trace_transform) in query.q1_mut().iter_mut() {
+            for (entity, mut trace_transform) in query.q1().iter_mut() {
                 if let Some(position) = positions.get(&entity) {
                     trace_transform.translation = Vec3::new(position.x, position.y, 0.0);
                 }
@@ -149,7 +149,7 @@ fn aiming_ui_aiming_end(
 pub struct AimingPlugin;
 
 impl Plugin for AimingPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<AimingMaterials>()
            .add_system_set(
             SystemSet::on_update(AppState::InGame)

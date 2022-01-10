@@ -11,18 +11,17 @@ pub struct Victory {
     pub player : Option<Player>
 }
 struct ButtonMaterials {
-    normal: Handle<ColorMaterial>,
-    hovered: Handle<ColorMaterial>,
-    pressed: Handle<ColorMaterial>,
+    normal: Color,
+    hovered: Color,
+    pressed: Color,
 }
 
 impl FromWorld for ButtonMaterials {
-    fn from_world(world: &mut World) -> Self {
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
+    fn from_world(_: &mut World) -> Self {
         ButtonMaterials {
-            normal: materials.add(Color::rgb(0.15, 0.15, 0.15).into()),
-            hovered: materials.add(Color::rgb(0.25, 0.25, 0.25).into()),
-            pressed: materials.add(Color::rgb(0.35, 0.75, 0.35).into()),
+            normal: Color::rgb(0.15, 0.15, 0.15),
+            hovered: Color::rgb(0.25, 0.25, 0.25),
+            pressed: Color::rgb(0.35, 0.75, 0.35),
         }
     }
 }
@@ -55,7 +54,7 @@ fn setup_menu(
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            material: button_materials.normal.clone(),
+            color: button_materials.normal.into(),
             ..Default::default()
         })
         .with_children(|parent| {
@@ -105,21 +104,21 @@ fn menu(
     mut state: ResMut<State<AppState>>,
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
-        (&Interaction, &mut Handle<ColorMaterial>),
+        (&Interaction, &mut UiColor),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut material) in interaction_query.iter_mut() {
+    for (interaction, mut color) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
-                *material = button_materials.pressed.clone();
+                *color = button_materials.pressed.into();
                 state.set(AppState::MainMenu).unwrap();
             }
             Interaction::Hovered => {
-                *material = button_materials.hovered.clone();
+                *color = button_materials.hovered.into();
             }
             Interaction::None => {
-                *material = button_materials.normal.clone();
+                *color = button_materials.normal.into();
             }
         }
     }
@@ -133,7 +132,7 @@ fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
 pub struct VictoryMenuPlugin;
 
 impl Plugin for VictoryMenuPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<ButtonMaterials>()
            .init_resource::<Victory>()
            .add_system_set(

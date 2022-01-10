@@ -13,7 +13,7 @@ pub struct PlayerOrder {
     pub current : usize
 }
 
-#[derive(Clone)]
+#[derive(Clone, Component)]
 pub struct Player {
     pub name : String,
     bases : BTreeSet<Entity>,
@@ -23,7 +23,6 @@ pub struct Player {
 
 pub fn setup_players(
     commands : &mut Commands,
-    materials : &mut Assets<ColorMaterial>,
     player_order : &mut PlayerOrder,
     font : Handle<Font>
 ) -> Vec<Player> {
@@ -47,18 +46,18 @@ pub fn setup_players(
     player_order.order.push(player_2);
     player_order.current = 0;
 
-    setup_player_ui(commands, materials, &players, font);
+    setup_player_ui(commands, &players, font);
 
     players
 }
 
+#[derive(Component)]
 struct PlayerUI {
     index : usize
 }
 
 fn setup_player_ui (
     commands : &mut Commands,
-    materials : &mut Assets<ColorMaterial>,
     players : &Vec<Player>,
     font : Handle<Font>
 ) {
@@ -75,7 +74,7 @@ fn setup_player_ui (
             border: Rect::all(Val::Px(10.0)),
             ..Default::default()
         },
-        material: materials.add(Color::rgba(0.4, 0.4, 0.4, 0.8).into()),
+        color: Color::rgba(0.4, 0.4, 0.4, 0.8).into(),
         ..Default::default()
     })
     .with_children(|parent| {
@@ -184,7 +183,7 @@ fn teardown_players(
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<PlayerOrder>()
            .add_system_set(
               SystemSet::on_update(AppState::InGame)

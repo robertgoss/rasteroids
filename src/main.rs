@@ -15,7 +15,7 @@ pub mod main_menu;
 pub mod victory_menu;
 
 use asteroids::{calculate_gravity, add_asteroid, AsteroidPlugin, Asteroid};
-use base::{add_base, BasePlugin, BaseMaterials};
+use base::{add_base, BasePlugin, BaseTextures};
 use weapon::{Weapon, WeaponPlugin, WeaponType, Launch, WeaponExplode};
 use turn::{TurnPlugin, TurnState, TurnStart, TurnFiring, TurnPhase};
 use aiming::AimingPlugin;
@@ -25,14 +25,14 @@ use app_state::AppState;
 use main_menu::MainMenuPlugin;
 use victory_menu::VictoryMenuPlugin;
 
+#[derive(Component)]
 struct Background;
 
 
 fn setup(
     mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     mut player_order: ResMut<PlayerOrder>,
-    base_materials : Res<BaseMaterials>,
+    base_materials : Res<BaseTextures>,
     asset_server: Res<AssetServer>,
     mut events : EventWriter<TurnStart>
 ) {
@@ -42,28 +42,26 @@ fn setup(
     // Background sprite
     let star_map_handle = asset_server.load("images/starfield.png");
     commands.spawn_bundle(SpriteBundle {
-        material: materials.add(star_map_handle.into()),
+        texture: star_map_handle,
         transform: Transform::from_scale(Vec3::new(1.5, 1.5, 1.5)),
         ..Default::default()
     }).insert(Background);
     // Players 
     let players = setup_players(
         &mut commands,
-        &mut materials, 
         &mut player_order,
         asset_server.load("fonts/FiraSans-Bold.ttf")
     );
     // Asteroids
     let asteroid_texture_handle = asset_server.load("images/pallas_asteroid_alpha.png");
-    let asteroid_material = materials.add(asteroid_texture_handle.into());
     let asteroids = vec!( 
-      add_asteroid(&mut commands, 0.0, -215.0, asteroid_material.clone()),
-      add_asteroid(&mut commands, -60.0, 0.0, asteroid_material.clone()),
-      add_asteroid(&mut commands, 60.0, 0.0, asteroid_material.clone())
+      add_asteroid(&mut commands, 0.0, -215.0, asteroid_texture_handle.clone()),
+      add_asteroid(&mut commands, -60.0, 0.0, asteroid_texture_handle.clone()),
+      add_asteroid(&mut commands, 60.0, 0.0, asteroid_texture_handle.clone())
     );
     // Bases
-    let colours :Vec<Handle<ColorMaterial>> = players.iter().map(
-        |player| materials.add(player.colour.into())
+    let colours :Vec<Color> = players.iter().map(
+        |player| player.colour
     ).collect();
     let base_1 = add_base( &mut commands, 0.0, &base_materials, &asteroids[0], player_order.order[0], colours[0].clone());
     add_base( &mut commands, 1.0, &base_materials, &asteroids[0], player_order.order[1], colours[1].clone());
@@ -130,31 +128,31 @@ fn teardown_ingame(
 }
 
 fn main() {
-    App::build().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-                .add_plugins(DefaultPlugins)
-                .add_state(AppState::MainMenu)
-                .add_plugin(MainMenuPlugin)
-                .add_system_set(
-                    SystemSet::on_enter(AppState::InGame)
-                    .with_system(setup.system())
-                )
-                .add_system_set(
-                    SystemSet::on_update(AppState::InGame)
-                    .with_system(firing_system.system())
-                    .with_system(gravity_system.system())
-                    .with_system(rocket_asteroid_collide_system.system())
-                )
-                .add_system_set(
-                   SystemSet::on_exit(AppState::InGame)
-                   .with_system(teardown_ingame.system())
-                )
-                .add_plugin(PlayerPlugin)
-                .add_plugin(AsteroidPlugin)
-                .add_plugin(WeaponPlugin)
-                .add_plugin(TurnPlugin)
-                .add_plugin(AimingPlugin)
-                .add_plugin(ExplosionPlugin)
-                .add_plugin(BasePlugin)
-                .add_plugin(VictoryMenuPlugin)
-                .run();
+    App::new().insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+              .add_plugins(DefaultPlugins)
+              .add_state(AppState::MainMenu)
+              .add_plugin(MainMenuPlugin)
+              .add_system_set(
+                  SystemSet::on_enter(AppState::InGame)
+                  .with_system(setup)
+              )
+              .add_system_set(
+                  SystemSet::on_update(AppState::InGame)
+                  .with_system(firing_system.system())
+                  .with_system(gravity_system.system())
+                  .with_system(rocket_asteroid_collide_system.system())
+              )
+              .add_system_set(
+                 SystemSet::on_exit(AppState::InGame)
+                 .with_system(teardown_ingame.system())
+              )
+              .add_plugin(PlayerPlugin)
+              .add_plugin(AsteroidPlugin)
+              .add_plugin(WeaponPlugin)
+              .add_plugin(TurnPlugin)
+              .add_plugin(AimingPlugin)
+              .add_plugin(ExplosionPlugin)
+              .add_plugin(BasePlugin)
+              .add_plugin(VictoryMenuPlugin)
+              .run();
 }

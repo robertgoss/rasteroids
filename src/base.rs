@@ -5,6 +5,7 @@ use super::explosion::Explode;
 use super::app_state::AppState;
 use super::asteroids::Asteroid;
 
+#[derive(Component)]
 pub struct Base {
     pub angle : f32,
     pub offset : f32,
@@ -12,6 +13,7 @@ pub struct Base {
     pub health_bar : Entity
 }
 
+#[derive(Component)]
 pub struct BaseOwner {
     pub entity : Entity
 }
@@ -20,30 +22,29 @@ pub struct BaseDestroyed {
     pub base : Entity
 }
 
+#[derive(Component)]
 pub struct BaseActivity {
     pub active : bool
 }
 
-pub struct BaseMaterials {
-    base : Handle<ColorMaterial>,
-    base_active : Handle<ColorMaterial>,
-    base_bar_background : Handle<ColorMaterial>
+pub struct BaseTextures {
+    base : Handle<Image>,
+    base_active : Handle<Image>,
+    base_bar_background : Color
 }
 
-impl FromWorld for BaseMaterials {
+impl FromWorld for BaseTextures {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
-        let base_handle = asset_server.load("images/base.png");
-        let base_active_handle = asset_server.load("images/base_highlight.png");
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
-        BaseMaterials {
-            base : materials.add(base_handle.into()),
-            base_active : materials.add(base_active_handle.into()),
-            base_bar_background : materials.add(Color::rgb(0.15, 0.15, 0.15).into())
+        BaseTextures {
+            base : asset_server.load("images/base.png"),
+            base_active : asset_server.load("images/base_highlight.png"),
+            base_bar_background : Color::rgb(0.15, 0.15, 0.15)
         }
     }
 }
 
+#[derive(Component)]
 pub struct PercentBar {
     pub val : f32,
     pub size : f32
@@ -51,15 +52,18 @@ pub struct PercentBar {
 
 pub fn add_base(
     commands: &mut Commands, angle : f32, 
-    materials : &BaseMaterials,
+    textures : &BaseTextures,
     asteroid : &(Entity, Asteroid), 
     player : Entity,
-    player_colour : Handle<ColorMaterial>
+    player_colour : Color
 ) -> Entity {
     let health_bar = commands.spawn_bundle(SpriteBundle {
-        material: player_colour,
         transform: Transform::from_xyz(0.0, 30.0, 0.0),
-        sprite: Sprite::new(Vec2::new(45.0, 4.0)),
+        sprite: Sprite { 
+            custom_size : Some(Vec2::new(45.0, 4.0)),
+            color : player_colour,
+            ..Default::default() 
+        },
         ..Default::default()
     }).insert(PercentBar { val : 1.0, size : 45.0}).id();
 
@@ -68,13 +72,16 @@ pub fn add_base(
     let pos = Vec3::new(-radius * angle.sin(), radius * angle.cos(), 0.0);
 
     let base = commands.spawn_bundle(SpriteBundle {
-        material: materials.base.clone(),
+        texture: textures.base.clone(),
         transform: Transform {
             rotation : Quat::from_rotation_z(angle),
             translation : pos,
             scale : Vec3::new(1.0, 1.0, 1.0)
         },
-        sprite: Sprite::new(Vec2::new(50.0, 50.0)),
+        sprite: Sprite { 
+            custom_size : Some(Vec2::new(50.0, 50.0)),
+            ..Default::default() 
+        },
         ..Default::default()
     }).insert(Base{
         angle : angle,
@@ -86,9 +93,12 @@ pub fn add_base(
     ).insert(BaseActivity{ active : false }
     ).with_children(|base_builder| {
         base_builder.spawn_bundle(SpriteBundle {
-            material: materials.base_bar_background.clone(),
+            sprite: Sprite { 
+                custom_size : Some(Vec2::new(45.0, 5.0)),
+                color : textures.base_bar_background,
+                ..Default::default() 
+            },
             transform: Transform::from_xyz(0.0, 30.0, 0.0),
-            sprite: Sprite::new(Vec2::new(45.0, 5.0)),
             ..Default::default()
         });
     }).id();
@@ -135,20 +145,22 @@ fn percent_update(
     mut percent_query : Query<(&PercentBar, &mut Sprite, &mut Transform), Changed<PercentBar>>
 ) {
     for (bar, mut sprite, mut transform) in percent_query.iter_mut() {
-        sprite.size.x = bar.val * bar.size;
+        sprite.custom_size = sprite.custom_size.map(
+            |vec| Vec2::new(bar.val * bar.size, vec.y)
+        );
         transform.translation.x = 0.5 * bar.size * (bar.val - 1.0);
     }
 }
 
 fn base_activity_changed (
-    mut base_query : Query<(&BaseActivity, &mut Handle<ColorMaterial>),Changed<BaseActivity>>,
-    materials : Res<BaseMaterials>
+    mut base_query : Query<(&BaseActivity, &mut Handle<Image>),Changed<BaseActivity>>,
+    textures : Res<BaseTextures>
 ) {
-    for (activity, mut material) in base_query.iter_mut() {
+    for (activity, mut texture) in base_query.iter_mut() {
         if activity.active {
-            *material = materials.base_active.clone();
+            *texture = textures.base_active.clone();
         } else {
-            *material = materials.base.clone();
+            *texture = textures.base.clone();
         }
     }
 }
@@ -181,9 +193,9 @@ fn teardown_bases(
 pub struct BasePlugin;
 
 impl Plugin for BasePlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_event::<BaseDestroyed>()
-           .init_resource::<BaseMaterials>()
+           .init_resource::<BaseTextures>()
            .add_system_set(
             SystemSet::on_update(AppState::InGame)
               .with_system(percent_update.system())

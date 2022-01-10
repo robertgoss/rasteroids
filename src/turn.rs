@@ -57,7 +57,7 @@ fn turn_starter(
 pub struct TurnPlugin;
 
 impl Plugin for TurnPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_event::<TurnStart>()
            .add_event::<TurnEnd>()
            .add_event::<TurnFiring>()

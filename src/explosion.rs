@@ -9,7 +9,7 @@ pub struct Explode {
 pub struct ExplosionPlugin;
 
 impl Plugin for ExplosionPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_event::<Explode>();
     }
 }

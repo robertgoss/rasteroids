@@ -5,9 +5,10 @@ use super::base::{Base, BaseDestroyed};
 use super::explosion::Explode;
 use super::app_state::AppState;
 
+#[derive(Component)]
 pub struct AsteroidDrawable;
 
-#[derive(Clone)]
+#[derive(Clone, Component)]
 pub struct Asteroid{
     pub max_radius : f32,
     pub radius : f32
@@ -24,7 +25,7 @@ impl Asteroid {
     }
 }
 
-pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<ColorMaterial>) -> (Entity, Asteroid) {
+pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<Image>) -> (Entity, Asteroid) {
     let max_radius = 100.0;
     let asteroid = Asteroid{
         max_radius : 100.0,
@@ -35,9 +36,12 @@ pub fn add_asteroid(commands: &mut Commands, x : f32, y : f32, texture : Handle<
     ).with_children(
         |parent| {
             parent.spawn_bundle(SpriteBundle {
-                material: texture,
+                texture: texture,
                 transform: Transform::identity(),
-                sprite: Sprite::new(Vec2::new(2.0*max_radius, 2.0*max_radius)),
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(2.0*max_radius, 2.0*max_radius)),
+                    ..Default::default()
+                },
                 ..Default::default()
             }).insert(AsteroidDrawable);
         }
@@ -153,7 +157,7 @@ fn teardown_asteroids(
 pub struct AsteroidPlugin;
 
 impl Plugin for AsteroidPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_event::<AsteroidDestroyed>()
            .add_system_set(
               SystemSet::on_update(AppState::InGame)
